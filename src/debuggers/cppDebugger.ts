@@ -28,6 +28,7 @@ export class CppDebugger extends Debugger {
     private readonly io = "leetcode-io.h";
     private readonly handler = "leetcode-handler.h";
     private readonly main = "leetcode-main.cpp";
+    private inserted: boolean = false;
 
     public async init(solutionEditor: vscode.TextEditor): Promise<string | undefined> {
         if (!solutionEditor || solutionEditor.document.isClosed || !this.codeTemplate) {
@@ -36,6 +37,7 @@ export class CppDebugger extends Debugger {
 
         // insert include code to solution file
         const insertContent: string = "#include \"" + this.definition + "\"\n";
+        this.inserted = true;
         const editResult: boolean = await solutionEditor.edit((editor: vscode.TextEditorEdit) => editor.insert(new vscode.Position(0, 0), insertContent));
         if (!editResult) {
             return;
@@ -56,10 +58,9 @@ export class CppDebugger extends Debugger {
 
     public async dispose(solutionEditor: vscode.TextEditor): Promise<void> {
         // remove inserted include code
-        if (solutionEditor.document.isClosed) {
-            return;
+        if (this.inserted && !solutionEditor.document.isClosed) {
+            await solutionEditor.edit((editor: vscode.TextEditorEdit) => { editor.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(1, 0))); });
         }
-        await solutionEditor.edit((editor: vscode.TextEditorEdit) => { editor.delete(new vscode.Range(new vscode.Position(0, 0), new vscode.Position(1, 0))); });
         // remove stub code files
         await this.stubFileHelper.uninstall(path.dirname(solutionEditor.document.uri.fsPath));
     }
