@@ -1,0 +1,87 @@
+{
+	"name": "vscode-leetcode-cpp-debug",
+	"displayName": "LeetCode Debugger for C++",
+	"description": "Debug support for LeetCode with C++",
+	"version": "0.0.1",
+	"author": "Xavier Cai",
+	"license": "MIT",
+	"engines": {
+		"vscode": "^1.43.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/XavierCai1996/vscode-leetcode-cpp-debug"
+	},
+	"categories": [
+		"Other"
+	],
+	"keywords": [
+		"leetcode",
+		"cpp",
+		"debug"
+	],
+	"activationEvents": [
+		"onCommand:leetcode-cpp-debugger.debug"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "leetcode-cpp-debugger.debug",
+				"title": "LeetCode Debugger: Start Debugging"
+			}
+		],
+		"configuration": [
+			{
+				"title": "LeetCode Cpp Debugger",
+				"properties": {
+					"leetcode-cpp-debugger.source": {
+						"type": "string",
+						"enum": [
+							"[online]leetcode.com",
+							"[online]leetcode-cn.com",
+							"[offline]local"
+						],
+						"scope": "application",
+						"description": "Source of code template for generating debugging code.",
+						"default": "[online]leetcode.com"
+					},
+					"leetcode-cpp-debugger.idMatchPattern": {
+						"type": "string",
+						"scope": "application",
+						"description": "Regular expression for capturing problem ID when fetching problem online.",
+						"default": "(\\d+).*"
+					}
+				}
+			}
+		]
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run compile",
+		"compile": "tsc -p ./",
+		"lint": "eslint src --ext ts",
+		"watch": "tsc -watch -p ./",
+		"pretest": "npm run compile && npm run lint",
+		"test": "node ./out/test/runTest.js"
+	},
+	"devDependencies": {
+		"@types/glob": "^7.1.1",
+		"@types/mocha": "^7.0.1",
+		"@types/node": "^12.11.7",
+		"@types/vscode": "^1.43.0",
+		"eslint": "^6.8.0",
+		"@typescript-eslint/parser": "^2.18.0",
+		"@typescript-eslint/eslint-plugin": "^2.18.0",
+		"mocha": "^7.0.1",
+		"typescript": "^3.7.5",
+		"vscode-test": "^1.3.0",
+		"@types/fs-extra": "5.0.0",
+		"@types/request": "^2.48.4"
+	},
+	"dependencies": {
+		"fs-extra": "^9.0.0",
+		"glob": "^7.1.6",
+		"iconv-lite": "^0.5.1",
+		"request": "^2.88.2"
+	}
+}
