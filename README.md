@@ -2,11 +2,11 @@
 
 > Debug support for [LeetCode](https://leetcode.com/) with C++ in [VSCode](https://code.visualstudio.com/)
 
-- **English Document** | [中文文档](./README_zh-CN.md)
+- **English Document** | [中文文档](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/README_zh-CN.md)
 
 ## Quick Start
 
-![demo](./docs/imgs/demo.gif)
+![demo](https://raw.githubusercontent.com/XavierCai1996/vscode-leetcode-cpp-debug/master/docs/imgs/demo.gif)
 
 > **Attention**: Before start debugging, you must check availability of your C++ debugger tools. Get more information from [VSCode documents](https://code.visualstudio.com/docs/cpp/config-mingw#cpp-atricles).
 
@@ -98,7 +98,7 @@ Setting Name|Description|Default Value
 
 ## Release Notes
 
-Refer to [CHANGELOG](./CHANGELOG.md).
+Refer to [CHANGELOG](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/CHANGELOG.md).
 
 ## Tips
 

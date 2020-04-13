@@ -4,7 +4,9 @@
 	"description": "Debug support for LeetCode with C++",
 	"version": "0.0.1",
 	"author": "Xavier Cai",
+    "publisher": "XavierCai",
 	"license": "MIT",
+    "icon": "resources/imgs/icon.png",
 	"engines": {
 		"vscode": "^1.43.0"
 	},
