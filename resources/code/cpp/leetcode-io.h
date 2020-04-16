@@ -329,7 +329,9 @@ SIMO& SIMO::RunInline(std::function<void(SIMO&)> cb) {
     ++level_;
     cb(*this);
     if (--level_ == 0) {
-        bool new_line = CheckChar('\n');
+        bool cr = CheckChar('\n');
+        bool lf = CheckChar('\r');
+        bool new_line = cr || lf;
         util::assert_msg(new_line || CheckChar(EOF), util::join(inputFormatError_, "bad end of line."));
         if (fromFile_ && new_line) {
             ++line_;
