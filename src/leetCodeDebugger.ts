@@ -66,10 +66,15 @@ class LeetCodeDebugger {
             const textDocument: vscode.TextDocument = await vscode.workspace.openTextDocument(filePath);
             return await vscode.window.showTextDocument(textDocument, undefined, true);
         }
+        let listenEvent: vscode.Disposable | undefined;
         async function afterDebugging(): Promise<void> {
+            console.log("afterDebugging: ", solutionFilePath);
             const editor = await switchEditor(solutionFilePath);
             await debuggerInstance.dispose(editor);
             await editor.document.save();
+            if (listenEvent) {
+                listenEvent.dispose();
+            }
         }
         try {
             const solutionEditor: vscode.TextEditor = await vscode.window.showTextDocument(await vscode.workspace.openTextDocument(solutionFilePath));
@@ -84,7 +89,7 @@ class LeetCodeDebugger {
                 entryEditor = await switchEditor(debugEntry);
             }
 
-            vscode.debug.onDidTerminateDebugSession(async () => { await afterDebugging(); });
+            listenEvent = vscode.debug.onDidTerminateDebugSession(async () => { await afterDebugging(); });
             await solutionEditor.document.save();
             if (!await this.launch()) {
                 await afterDebugging();
