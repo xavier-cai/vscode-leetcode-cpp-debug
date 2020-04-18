@@ -68,7 +68,6 @@ class LeetCodeDebugger {
         }
         let listenEvent: vscode.Disposable | undefined;
         async function afterDebugging(): Promise<void> {
-            console.log("afterDebugging: ", solutionFilePath);
             const editor = await switchEditor(solutionFilePath);
             await debuggerInstance.dispose(editor);
             await editor.document.save();
