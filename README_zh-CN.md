@@ -16,7 +16,7 @@
 
 - 为你的题解代码生成调试代码并启动调试.
 
-- 通过在命令输入板(`Ctrl/Cmd + Shift + P`)输入命令`LeetCode C++ Debugger: Start Debugging`来启动.
+- 通过在命令输入板(`Ctrl/Cmd + Shift + P`)输入命令`LeetCode Debugger: Start Debugging`来启动.
 
 ### 在线/离线 代码模板
 

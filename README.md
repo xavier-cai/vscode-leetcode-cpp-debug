@@ -16,7 +16,7 @@
 
 - Generate debugging code and start a debug session for your solution.
 
-- You can run the `LeetCode C++ Debugger: Start Debugging` command from the command palette (`Ctrl/Cmd + Shift + P`).
+- You can run the `LeetCode Debugger: Start Debugging` command from the command palette (`Ctrl/Cmd + Shift + P`).
 
 ### Online/Offline Code Template
 
