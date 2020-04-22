@@ -329,10 +329,16 @@ SIMO& SIMO::RunInline(std::function<void(SIMO&)> cb) {
     ++level_;
     cb(*this);
     if (--level_ == 0) {
-        bool cr = CheckChar('\n');
-        bool lf = CheckChar('\r');
-        bool new_line = cr || lf;
-        util::assert_msg(new_line || CheckChar(EOF), util::join(inputFormatError_, "bad end of line."));
+        bool new_line = !fromFile_;
+        if (fromFile_) {
+            bool cr = CheckChar('\n');
+            bool lf = CheckChar('\r');
+            new_line = cr || lf;
+        }
+        else {
+            cin.sync();
+        }
+        util::assert_msg(new_line || ReachEOF(), util::join(inputFormatError_, "bad end of line."));
         if (fromFile_ && new_line) {
             ++line_;
             offset_ = is_->tellg();
