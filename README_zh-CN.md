@@ -93,8 +93,10 @@
 :---|:---|:---
 `Source`|用于生成调试代码的代码模板来源.|`"[online]leetcode.com"`
 `Id Match Pattern`|在线获取代码模板时, 用于捕获文件名中问题ID的正则表达式.|`"(\\d+).*"`
+`Output File Encoding`|生成的临时代码文件编码|`utf8`
 
 - `Id Match Pattern`的默认值能匹配任何以数字开头的文件名.
+- 中文下遇到编码问题如中文头文件无法识别时, 可以尝试将`Ouput File Encoding`设置为`gbk`
 
 ## 版本日志
 

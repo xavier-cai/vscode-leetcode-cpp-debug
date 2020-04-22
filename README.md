@@ -93,6 +93,7 @@ Setting Name|Description|Default Value
 :---|:---|:---
 `Source`|Source of code template for generating debugging code.|`"[online]leetcode.com"`
 `Id Match Pattern`|Regular expression for capturing problem ID when fetching problem online.|`"(\\d+).*"`
+`Output File Encoding`|Encoding of temporary code files|`utf8`
 
 - The default value of `Id Match Pattern` can match any file name begin with a number.
 
