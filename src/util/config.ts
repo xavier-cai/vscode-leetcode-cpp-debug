@@ -68,7 +68,7 @@ export function getSource(): Source | undefined {
 }
 
 export function getProblemId(file: string): string | undefined {
-    const pattern = getConfiguration().get<string>("idMatchPattern");
+    const pattern: string | undefined = getConfiguration().get<string>("idMatchPattern");
     if (!pattern) {
         return;
     }
@@ -86,6 +86,10 @@ export function getHost(): string | undefined {
         return;
     }
     return hosts[source];
+}
+
+export function getEncoding(): string | undefined {
+    return getConfiguration().get<string>("outputFileEncoding");
 }
 
 class LanguageHelper {

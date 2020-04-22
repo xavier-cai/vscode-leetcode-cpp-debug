@@ -55,6 +55,16 @@
 						"scope": "application",
 						"description": "Regular expression for capturing problem ID when fetching problem online.",
 						"default": "(\\d+).*"
+					},
+					"leetcode-cpp-debugger.outputFileEncoding": {
+						"type": "string",
+						"enum": [
+							"utf8",
+							"gbk"
+						],
+						"scope": "application",
+						"description": "Encoding of temporary code files",
+						"default": "utf8"
 					}
 				}
 			}

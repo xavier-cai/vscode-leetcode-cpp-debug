@@ -15,6 +15,15 @@ export class StubFileHelper {
     public files: StubFile[];
     constructor(private token: string, public resourcesPath: string, private encoding = "utf8") {
         this.files = [];
+        this.validate();
+    }
+    private validate() {
+        try {
+            iconv.encode("", this.encoding);
+        }
+        catch {
+            throw new Error(`Encoding not recognized: '${this.encoding}'`);
+        }
     }
     private async check(filePath: string): Promise<boolean> {
         return (iconv.decode(await fse.readFile(filePath), this.encoding)).indexOf(this.token) >= 0;
@@ -58,11 +67,10 @@ class StubFileHelperFactory {
         if (!await fse.pathExists(res)) {
             return;
         }
-        const fileName: string = path.basename(filePath);
-        // TODO ISSUE: g++(UTF-8) can not find header file with chinese in Windows(GBK)
-        // so if there are chinese in file name, we need encoding with GBK
-        const oEncoding: string = (/.*[\u4e00-\u9fa5]+.*$/.test(fileName)) ? "gbk" : "utf8";
-        const stubFileHelper = new StubFileHelper(language.commet.begin + ' ' + uc.configs.token + ' ' + language.commet.end, res, oEncoding);
+        //const fileName: string = path.basename(filePath);
+        //const oEncoding: string = (/.*[\u4e00-\u9fa5]+.*$/.test(fileName)) ? "gbk" : "utf8";
+        const oEncoding: string | undefined = uc.getEncoding();
+        const stubFileHelper = new StubFileHelper(language.commet.begin + ' ' + uc.configs.token + ' ' + language.commet.end, res, oEncoding ? oEncoding : "utf8");
         const files: string[] = glob.sync(language.stub, {
             cwd: res,
             nodir: true

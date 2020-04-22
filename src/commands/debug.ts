@@ -16,7 +16,12 @@ export async function debugSolution(uri?: vscode.Uri): Promise<void> {
     try {
         await leetCodeDebugger.startDebugging(textEditor.document.uri.fsPath);
     } catch (error) {
-        await vscode.window.showInformationMessage(`Error: ${error}`);
+        if (error instanceof Error) {
+            await vscode.window.showInformationMessage(`${error}`);
+        }
+        else {
+            await vscode.window.showInformationMessage(`Error: ${error}`);
+        }
         return;
     }
 }
