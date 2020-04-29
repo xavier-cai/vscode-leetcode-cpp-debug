@@ -6,6 +6,12 @@
 #include <vector>
 #include <map>
 #include <tuple>
+#include <typeinfo>
+
+#ifdef __GNUC__
+#include <cxxabi.h>
+#include <cstdlib>
+#endif
 
 #include "leetcode-json.h"
 
@@ -41,23 +47,58 @@ const char* ConvertException::what() const throw () {
 
 
 
-//common template
 template <typename _T>
+struct _is_object : public std::is_base_of<json::Object, _T> {};
+
+template <typename _T>
+std::string _get_name() {
+    std::string name(typeid(_T).name());
+#ifdef __GNUC__
+    char* real = abi::__cxa_demangle(name.c_str(), NULL, NULL, NULL);
+    name = std::string(real);
+    free(real);
+#endif
+    return name;
+}
+
+//common template
+template <typename _T, bool object = _is_object<_T>::value>
 struct Convert {
     static void FromJson(_T& v, const json::Json& js) {
-        throw ConvertException(js, "Conversion from JSON not implemented.");
+        throw ConvertException(js, std::string("Conversion from JSON to ") + _get_name<_T>() + " not implemented.");
     }
 
     static json::Json ToJson(const _T& v) {
-        auto ptr = dynamic_cast<const json::Object*>(&v);
-        if (ptr != NULL) return *ptr;
-        throw ConvertException(json::Json(), "Conversion to JSON not implemented.");
+        throw ConvertException(json::Json(), std::string("Conversion from ") + _get_name<_T>() + " to JSON not implemented.");
+    }
+};
+
+//object specialization
+template <typename _T>
+struct Convert<_T, true> {
+    static void FromJson(_T& v, const json::Json& js) {
+        v = *js.GetObject<_T>();
+    }
+
+    static json::Json ToJson(const _T& v) {
+        return v;
     }
 };
 
 //reference type specialization
 template <typename _T>
-struct Convert<_T&> {
+struct Convert<_T&, true> {
+    static void FromJson(_T& v, const json::Json& js) {
+        Convert<_T>::FromJson(v, js);
+    }
+
+    static json::Json ToJson(const _T& v) {
+        return Convert<_T>::ToJson(v);
+    }
+};
+
+template <typename _T>
+struct Convert<_T&, false> {
     static void FromJson(_T& v, const json::Json& js) {
         Convert<_T>::FromJson(v, js);
     }
@@ -80,7 +121,21 @@ struct Convert<json::Json> {
 
 
 
-#define QUICK_THROW(js, type) throw ConvertException(js, std::string("Convert to [") + #type + "] failed.")
+#define QUICK_THROW(js, type) throw ConvertException(js, std::string("Convert from JSON to ") + _get_name<type>() + " failed.")
+
+template <>
+struct Convert<bool> {
+    static void FromJson(bool& v, const json::Json& js) {
+        auto obj = js.GetObject<json::ObjectBoolean>();
+        if (obj == NULL) QUICK_THROW(js, bool);
+        v = obj->GetValue();
+    }
+    static json::Json ToJson(const bool& v) {
+        return json::ObjectBoolean(v);
+    }
+};
+
+
 
 template <>
 struct Convert<int> {
@@ -127,10 +182,10 @@ struct Convert<std::string> {
 
 
 template <typename _VAL>
-struct Convert<std::vector<_VAL>> {
+struct Convert<std::vector<_VAL>, false> {
     static void FromJson(std::vector<_VAL>& v, const json::Json& js) {
         auto obj = js.GetObject<json::ObjectArray>();
-        if (obj == NULL) QUICK_THROW(js, std::vector);
+        if (obj == NULL) QUICK_THROW(js, std::vector<_VAL>);
         int n = obj->GetArray().size();
         v.resize(n);
         for (int i = 0; i < n; ++i) {
@@ -150,10 +205,11 @@ struct Convert<std::vector<_VAL>> {
 
 
 template <typename _KEY, typename _VAL>
-struct Convert<std::map<_KEY, _VAL>> {
+struct Convert<std::map<_KEY, _VAL>, false> {
     static void FromJson(std::map<_KEY, _VAL>& v, const json::Json& js) {
         auto obj = js.GetObject<json::ObjectDict>();
-        if (obj == NULL) QUICK_THROW(js, std:map);
+        using type = std::map<_KEY, _VAL>;
+        if (obj == NULL) QUICK_THROW(js, type);
         obj->ForEach([&v](const json::Json& key, const json::Json& val) {
             _KEY vark;
             _VAL varv;
@@ -175,11 +231,11 @@ struct Convert<std::map<_KEY, _VAL>> {
 
 
 template <typename... _ARGS>
-struct Convert<std::tuple<_ARGS...>> {
+struct Convert<std::tuple<_ARGS...>, false> {
     static void FromJson(std::tuple<_ARGS...>& v, const json::Json& js) {
         auto obj = js.GetObject<json::ObjectArray>();
         int n = std::tuple_size<std::tuple<_ARGS...>>::value;
-        if (obj == NULL || n != obj->GetArray().size()) QUICK_THROW(js, std::tuple);
+        if (obj == NULL || n != obj->GetArray().size()) QUICK_THROW(js, std::tuple<_ARGS...>);
         Impl<std::tuple<_ARGS...>, sizeof...(_ARGS)>::DoFromJson(v, *obj);
     }
 

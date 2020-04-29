@@ -99,10 +99,11 @@ class Object : public clone::Interface {
 public:
     enum Type {
         JSON_NULL = 1,
-        NUMBER = 2,
-        STRING = 4,
-        ARRAY = 8,
-        OBJECT = 16, //DICT
+        BOOLEAN = 2,
+        NUMBER = 4,
+        STRING = 8,
+        ARRAY = 16,
+        OBJECT = 32, //DICT
     };
 
     virtual ~Object() {}
@@ -335,6 +336,60 @@ int ObjectNull::DoParse(const std::string& raw, int start) {
 
 void ObjectNull::Print(std::ostream& os) const {
     os << this->text_;
+}
+
+
+
+class ObjectBoolean : public clone::Template<ObjectBoolean, Object> {
+public:
+    ObjectBoolean();
+    ObjectBoolean(bool value);
+    bool GetValue() const;
+
+protected:
+    virtual int DoParse(const std::string& raw, int start) override;
+    virtual void Print(std::ostream& os) const override;
+
+private:
+    bool value_;
+
+    static const std::string true_;
+    static const std::string false_;
+}; // class ObjectNull
+
+const std::string ObjectBoolean::true_("true");
+const std::string ObjectBoolean::false_("false");
+
+ObjectBoolean::ObjectBoolean() : value_(false) { this->Object::SetType(Object::BOOLEAN); }
+
+ObjectBoolean::ObjectBoolean(bool value) : value_(value) { this->Object::SetType(Object::BOOLEAN); }
+
+bool ObjectBoolean::GetValue() const {
+    return this->value_;
+}
+
+int ObjectBoolean::DoParse(const std::string& raw, int start) {
+    int idx = start + this->SkipSpaces(raw, start);
+    int n = raw.size(), mt = this->true_.size(), mf = this->false_.size();
+    auto check = [&](const std::string& str) -> bool {
+        int m = str.size();
+        if (idx + m > n) return false;
+        return std::strncmp(str.c_str(), raw.c_str() + idx, m) == 0;
+    };
+    if (check(this->true_)) {
+        this->value_ = true;
+        return mt;
+    }
+    if (check(this->false_)) {
+        this->value_ = false;
+        return mf;
+    }
+    throw JsonException(*this, raw, idx);
+    return 0;
+}
+
+void ObjectBoolean::Print(std::ostream& os) const {
+    os << (this->value_ ? this->true_ : this->false_);
 }
 
 
@@ -649,12 +704,18 @@ void ObjectDict::Print(std::ostream& os) const {
 int Json::Parse(const std::string& raw, int start, JsonMask* mask, bool all) {
     auto flag = [&mask](Object::Type type) -> bool { return mask == NULL || (mask->Mask() & type); };
     auto number = [](char c) -> bool { return (c >= '0' && c <= '9') || c == '.' || c == '-'; };
+    auto check = [&](const std::string& str, int i) -> bool {
+        int m = str.size();
+        if (i + m > raw.size()) return false;
+        return std::strncmp(str.c_str(), raw.c_str() + i, m) == 0;
+    };
     if (this->obj_ != NULL) delete this->obj_;
     this->obj_ = NULL;
     int idx = start, n = raw.size();
     while (idx < n && raw[idx] == ' ') ++idx;
     if (idx >= n) throw JsonException(*this, raw, idx);
-    if (flag(Object::JSON_NULL) && idx + 4 <= n && std::strncmp(raw.c_str() + idx, "null", 4) == 0) this->obj_ = new ObjectNull();
+    if (flag(Object::JSON_NULL) && check("null", idx)) this->obj_ = new ObjectNull();
+    else if (flag(Object::BOOLEAN) && (check("true", idx) || check("false", idx))) this->obj_ = new ObjectBoolean();
     else if (flag(Object::NUMBER) && number(raw[idx])) this->obj_ = new ObjectNumber();
     else if (flag(Object::STRING) && raw[idx] == '\"') this->obj_ = new ObjectString();
     else if (flag(Object::ARRAY) && raw[idx] == '[') this->obj_ = new ObjectArray();
