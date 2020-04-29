@@ -394,6 +394,7 @@ void ObjectBoolean::Print(std::ostream& os) const {
 
 
 
+//TODO: scientific notation not supported yet
 class ObjectNumber : public clone::Template<ObjectNumber, Object> {
 public:
     ObjectNumber();
