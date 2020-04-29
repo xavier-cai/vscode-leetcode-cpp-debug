@@ -7,6 +7,7 @@
 #include <map>
 #include <tuple>
 #include <typeinfo>
+#include <cassert>
 
 #ifdef __GNUC__
 #include <cxxabi.h>
@@ -76,13 +77,17 @@ struct Convert {
 //object specialization
 template <typename _T>
 struct Convert<_T, true> {
+#define ASSERT_HINT "Hey, this is not a json::Object, right?"
     static void FromJson(_T& v, const json::Json& js) {
+        static_assert(_is_object<_T>::value, ASSERT_HINT);
         v = *js.GetObject<_T>();
     }
 
     static json::Json ToJson(const _T& v) {
+        static_assert(_is_object<_T>::value, ASSERT_HINT);
         return v;
     }
+#undef ASSERT_HINT
 };
 
 //reference type specialization
@@ -289,6 +294,18 @@ template <typename _T>
 _T FromJson(const json::Json& js) {
     _T v;
     FromJson(v, js);
+    return v;
+}
+
+template <typename _T>
+void FromJson(_T& v, const std::string& raw) {
+    Convert<_T>::FromJson(v, json::Json(raw));
+}
+
+template <typename _T>
+_T FromJson(const std::string& raw) {
+    _T v;
+    FromJson(v, json::Json(raw));
     return v;
 }
 
