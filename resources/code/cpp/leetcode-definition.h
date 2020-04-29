@@ -1,46 +1,84 @@
 #ifndef LEETCODE_DEFINITION
 #define LEETCODE_DEFINITION
 
-#include <list>
-
-#ifndef NULL
-#define NULL 0
-#endif
+#include "leetcode-types.h"
 
 namespace lc {
-    
-struct ListNode {
-public:
-    int val;
-    ListNode *next;
-    ListNode(int x) : val(x), next(NULL) { all_.push_back(this); }
-private:
-    static std::list<ListNode*> all_;
-    friend class MemoryCleaner;
-};
-std::list<ListNode*> ListNode::all_;
 
-struct TreeNode {
-public:
-    int val;
-    TreeNode *left;
-    TreeNode *right;
-    TreeNode(int x) : val(x), left(NULL), right(NULL) { all_.push_back(this); }
-private:
-    static std::list<TreeNode*> all_;
-    friend class MemoryCleaner;
-};
-std::list<TreeNode*> TreeNode::all_;
+class ListNode;
+class TreeNode;
 
 } // namespace lc
 
-// for user solution
-#define INPUT std::cin // input[istream, string], defalut to cin
-#define OUTPUT std::cout // output[ostream, string], defalut to cout
-//#define INTERACTION
+//#include <bits/stdc++.h>
 
-#include <bits/stdc++.h>
+//#include <cfloat>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <ccomplex>
+#include <cstdbool>
+#include <cstdint>
+
+#include <algorithm>
+#include <bitset>
+#include <complex>
+#include <deque>
+#include <exception>
+#include <fstream>
+#include <functional>
+#include <iomanip>
+#include <ios>
+#include <iosfwd>
+#include <iostream>
+#include <istream>
+#include <iterator>
+#include <limits>
+#include <list>
+#include <locale>
+#include <map>
+#include <memory>
+#include <new>
+#include <numeric>
+#include <ostream>
+#include <queue>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <stdexcept>
+#include <streambuf>
+#include <string>
+#include <typeinfo>
+#include <utility>
+#include <valarray>
+#include <vector>
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <codecvt>
+#include <condition_variable>
+#include <forward_list>
+#include <future>
+#include <initializer_list>
+#include <mutex>
+#include <random>
+#include <ratio>
+#include <regex>
+#include <scoped_allocator>
+#include <system_error>
+#include <thread>
+#include <tuple>
+#include <typeindex>
+#include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
+
+#if __cplusplus >= 201402L
+#include <shared_mutex>
+#endif
+
 using namespace std;
 using namespace lc;
 
-#endif // LEETCODE_DEFINITION
+#endif

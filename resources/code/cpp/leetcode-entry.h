@@ -4,93 +4,130 @@
 #include <vector>
 #include <string>
 #include <list>
+#include <exception>
 
 #include "leetcode-handler.h"
 
 namespace lc {
-    
-class MemoryCleaner {
+
+struct EntryException : public std::exception {
 public:
-    static void Clean();
-    
+    EntryException(const std::string& raw, int line, int pos, const std::string& info);
+    const std::string& GetRaw() const;
+    int GetLine() const;
+    int GetPosition() const;
+    const char* what() const throw ();
+
 private:
-    template<typename _T>
-    static void Clean(std::list<_T*>& all) {
-        for (auto& p : all)
-            delete p;
-        all.clear();
-    }
+    std::string raw_;
+    int line_;
+    int pos_;
+    std::string info_;
+}; // struct EntryException
 
-};
-
-void MemoryCleaner::Clean() {
-    Clean(TreeNode::all_);
-    Clean(ListNode::all_); 
+EntryException::EntryException(const std::string& raw, int line, int pos, const std::string& info) :
+    raw_(raw),
+    line_(line),
+    pos_(pos),
+    info_("Entry error. ")
+{
+    this->info_ += info;
 }
+
+const std::string& EntryException::GetRaw() const {
+    return this->raw_;
+}
+
+int EntryException::GetLine() const {
+    return this->line_ ;
+}
+
+int EntryException::GetPosition() const {
+    return this->pos_ ;
+}
+
+const char* EntryException::what() const throw () {
+    return this->info_.c_str();
+}
+
+
+
 
 class Entry {
 public:
-    static void Run(SIMO& io);
+    static void Run(io::SI& in, io::MO& out);
     
 private:
-    static void RunAlgorithm(SIMO& io);
-    static void RunSystemDesign(SIMO& io);
+    static void RunAlgorithm(io::SI& in, io::MO& out);
+    static void RunSystemDesign(io::SI& in, io::MO& out);
 };
 
-void Entry::Run(SIMO& io) {
-    while (!io.ReachEOF()) {
+void Entry::Run(io::SI& in, io::MO& out) {
+    while (!in.Eof()) {
+        try {
 #ifdef INTERACTION
-        io.Input(INTERACTION);
+        in.Input(INTERACTION);
 #endif
 #ifdef SYSTEM_DESIGN 
-        RunSystemDesign(io);
+        RunSystemDesign(in, out);
 #else
-        RunAlgorithm(io);
+        RunAlgorithm(in, out);
 #endif
+        }
+        catch (io::EofException) {}
+
         try {
-            MemoryCleaner::Clean();
+            mem::MemoryCleaner::Clean();
         }
         catch (...) {
-            util::assert_msg(false, "Please only use pointer of [TreeNode] & [ListNode] and do not use [delete].");
+            throw std::string("Please only use pointer of [TreeNode] & [ListNode] and do not use [delete].");
         }
     }
 }
 
-void Entry::RunAlgorithm(SIMO& io) {
-    Handler handler(io);
-    handler.Handle(io);
+void Entry::RunAlgorithm(io::SI& in, io::MO& out) {
+    auto dummy = json::ObjectNull();
+    Handler handler(dummy);
+    handler.Handle(in, out);
 }
 
-void Entry::RunSystemDesign(SIMO& io) {
-    static std::string inputFormatError = "Input format error: ";
-    std::vector<std::string> functions;
-    io >> functions;
-    auto check = [&io] (char expect) -> void { 
-        util::assert_msg(io.CheckChar(expect),
-            util::join(inputFormatError, "design problem.",
-            "expect=\'", expect, "\'."));
+void Entry::RunSystemDesign(io::SI& in, io::MO& out) {
+    json::Json fobj(in.GetLine());
+    int fline = in.GetLineCount();
+    std::string fraw = in.GetRaw();
+    auto quick_throw = [&fline, &fraw, &fobj](int idx, const std::string& info) {
+        throw EntryException(fraw, fline, fobj.GetObject<json::ObjectArray>()->GetArray()[idx].GetObject()->GetPosistion(), info);
     };
-    if (functions.size() == 0) {
-        check('[');
-        check(']');
-        io << "[]" << std::endl;
-        return;
-    }
-    io.RunInline([&](SIMO& simo) {
-        check('[');
-        io << '[';
-        util::assert_msg(functions.front() == Handler::GetClassName(),
-            util::join(inputFormatError, "the first function should be constructor."));
-        Handler handler(io);
-        io << null;
-        for (int i = 1, n = functions.size(); i < n; ++i) {
-            check(',');
-            io << ',';
-            handler.Handle(io, functions[i]);
+
+    //get functions
+    std::vector<std::string> functions;
+    conv::FromJson(functions, fobj);
+    int n = functions.size();
+
+    //get args
+    json::Json obj(in.GetLine());
+    auto args = obj.GetObject<json::ObjectArray>();
+    if (args == NULL) throw conv::ConvertException(obj, "Input format error.");
+    if (n != args->GetArray().size()) throw EntryException(in.GetRaw(), in.GetLineCount(), args->GetPosistion(), "Number of functions and arguments not matched.");
+
+    //call functions
+    json::ObjectArray ret;
+    if (n > 0) {
+        if (functions.front() != Handler::GetClassName()) {
+            quick_throw(0, "The first function need be the constructor.");
         }
-        check(']');
-        io << ']' << std::endl;
-    });
+        Handler handler(args->GetArray().front());
+        ret.GetArray().emplace_back(json::ObjectNull());
+        for (int i = 1; i < n; ++i) {
+            try {
+                ret.GetArray().emplace_back(handler.Handle(args->GetArray()[i], functions[i]));
+            }
+            catch (std::string& e) {
+                quick_throw(i, e);
+            }
+        }
+    }
+    out << ret << std::endl;
 }
 
 } // namespace lc

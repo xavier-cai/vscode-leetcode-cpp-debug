@@ -157,8 +157,9 @@ export class CppDebugger extends Debugger {
                 helper.line(arg.type + " " + arg.name + ";");
                 tupleCode.push(arg.type + "&");
             }
-            helper.line(`std::tuple<` + tupleCode.join(", ") + `> __tuple__value { ` + genArgsCode(func) + ` };`);
-            helper.line(`io >> __tuple__value;`);
+            const tupleName: string = "__tuple__value";
+            helper.line(`std::tuple<` + tupleCode.join(", ") + `> ${tupleName} { ` + genArgsCode(func) + ` };`);
+            helper.line(`conv::FromJson(${tupleName}, in);`);
         }
 
         const code: CodeIndentHelper = new CodeIndentHelper();
@@ -173,7 +174,7 @@ export class CppDebugger extends Debugger {
             .line(`class Handler {`)
             .line(`public:`).right()
             .line(`static std::string GetClassName() { return "${meta.name}"; } `)
-            .line(`Handler(SIMO& io) {`).right();
+            .line(`Handler(const json::Json& in) {`).right();
 
         // generate constructor
         if (!meta.isDesignProblem) {
@@ -186,9 +187,7 @@ export class CppDebugger extends Debugger {
                 code.line(`solution_ = new ${meta.name}(${genArgsCode(ctor)});`);
             }
             else {
-                code.line(`vector<int> dummy;`)
-                    .line(`io >> dummy;`)
-                    .line(`solution_ = new ${meta.name}();`);
+                code.line(`solution_ = new ${meta.name}();`);
             }
         }
         code.left().line(`}`)
@@ -222,22 +221,22 @@ export class CppDebugger extends Debugger {
                 func = choice.value;
             }
 
-            code.line(`void Handle(SIMO& io, const std::string& fname) {}`);
-            code.line(`void Handle(SIMO& io) {`).right();
+            code.line(`json::Json Handle(const json::Json& in, const std::string& fname) { return json::ObjectNull(); }`);
+            code.line(`void Handle(io::SI& in, io::MO& out) {`).right();
             for (const arg of func.args) {
                 code.line(`${arg.type} ${arg.name};`)
-                    .line(`io >> ${arg.name};`);
+                    .line(`in >> ${arg.name};`);
             }
             code.line(`#ifdef LAZY_INTERACTION`)
-                .line(`io.Input(LAZY_INTERACTION);`)
+                .line(`in.Input(LAZY_INTERACTION);`)
                 .line(`#endif`)
-                .line(`io << solution_->${func.name}(${genArgsCode(func)}) << std::endl;`)
+                .line(`out << solution_->${func.name}(${genArgsCode(func)}) << std::endl;`)
                 .left().line('}');
         }
         else {
-            code.line(`void Handle(SIMO& io) {}`);
-            code.line(`void Handle(SIMO& io, const std::string& fname) {`).right()
-                .line(`if (fname == "") util::assert_msg(false, "Erorr: empty function.");`)
+            code.line(`void Handle(io::SI& in, io::MO& out) {}`);
+            code.line(`json::Json Handle(const json::Json& in, const std::string& fname) {`).right()
+                .line(`if (fname == "") throw std::string("Empty function name.");`)
                 .line(`#define CASE(func) else if (fname == #func)`);
             for (const func of meta.functions) {
                 if (func.name == meta.name) {
@@ -245,18 +244,19 @@ export class CppDebugger extends Debugger {
                 }
                 code.line(`CASE (${func.name}) {`).right();
                 genInputCode(func, code);
-                const callCode: string = `solution_->${func.name}(${genArgsCode(func)});`;
+                const callCode: string = `solution_->${func.name}(${genArgsCode(func)})`;
                 if (func.type == "void") {
-                    code.line(callCode)
-                        .line(`io << null;`);
+                    code.line(`${callCode};`)
+                        .line(`return json::ObjectNull();`);
                 }
                 else {
-                    code.line(`io << ${callCode}`);
+                    code.line(`return conv::ToJson(${callCode});`);
                 }
                 code.left().line(`}`);
             }
             code.line(`#undef CASE`)
-                .line(`else util::assert_msg(false, "Erorr: invalid function: " + fname);`)
+                .line(`throw std::string("Invalid function name.");`)
+                .line(`return json::ObjectNull();`)
                 .left().line(`}`);
         }
 
