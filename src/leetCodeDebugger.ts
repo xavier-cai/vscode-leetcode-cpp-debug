@@ -75,11 +75,13 @@ class LeetCodeDebugger {
         async function afterDebugging(): Promise<void> {
             const editor = await switchEditor(solutionFilePath);
             await debuggerInstance.dispose(editor);
-            const stub: Promise<void>[] = [
-                stubFileHelper?.uninstall(path.dirname(editor.document.uri.fsPath)),
-                stubCodeHelper.uninstall()
-            ]
-            await Promise.all(stub);
+            if (uc.getIsDeleteTemporaryContent()) {
+                const stub: Promise<void>[] = [
+                    stubFileHelper?.uninstall(path.dirname(editor.document.uri.fsPath)),
+                    stubCodeHelper.uninstall()
+                ]
+                await Promise.all(stub);
+            }
             await editor.document.save();
             if (listenEvent) {
                 listenEvent.dispose();

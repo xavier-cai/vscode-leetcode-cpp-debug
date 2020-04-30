@@ -50,6 +50,12 @@
 						"description": "Source of code template for generating debugging code.",
 						"default": "[online]leetcode.com"
 					},
+					"leetcode-cpp-debugger.deleteTemporaryContentAfterDebugging": {
+                        "type": "boolean",
+                        "default": true,
+                        "scope": "application",
+                        "description": "Delete temporary codes and files after debugging."
+                    },
 					"leetcode-cpp-debugger.idMatchPattern": {
 						"type": "string",
 						"scope": "application",
