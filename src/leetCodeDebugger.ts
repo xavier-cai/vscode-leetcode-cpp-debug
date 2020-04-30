@@ -78,7 +78,7 @@ class LeetCodeDebugger {
             if (uc.getIsDeleteTemporaryContent()) {
                 const stub: Promise<void>[] = [
                     stubFileHelper?.uninstall(path.dirname(editor.document.uri.fsPath)),
-                    stubCodeHelper.uninstall()
+                    stubCodeHelper.uninstall(editor)
                 ]
                 await Promise.all(stub);
             }
@@ -96,10 +96,11 @@ class LeetCodeDebugger {
             }
 
             const stub: Promise<void>[] = [
-                stubCodeHelper.install(),
+                stubCodeHelper.install(solutionEditor),
                 stubFileHelper.install(path.dirname(solutionEditor.document.uri.fsPath))
             ];
             await Promise.all(stub);
+            await solutionEditor.document.save();
 
             if (!await fse.pathExists(debugEntry)) {
                 await afterDebugging();
@@ -112,7 +113,6 @@ class LeetCodeDebugger {
             }
 
             listenEvent = vscode.debug.onDidTerminateDebugSession(async () => { await afterDebugging(); });
-            //await solutionEditor.document.save();
             if (!await this.launch()) {
                 await afterDebugging();
             }

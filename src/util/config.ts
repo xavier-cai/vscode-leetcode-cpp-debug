@@ -89,7 +89,7 @@ export function getHost(): string | undefined {
 }
 
 export function getIsDeleteTemporaryContent(): boolean {
-    return getConfiguration().get<boolean>("deleteTemporaryContentAfterDebugging");
+    return getConfiguration().get<boolean>("deleteTemporaryContentAfterDebugging", true);
 }
 
 export function getEncoding(): string | undefined {

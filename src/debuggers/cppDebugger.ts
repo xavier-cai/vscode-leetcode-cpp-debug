@@ -36,7 +36,7 @@ export class CppDebugger extends Debugger {
 
         const insertContent: string = "#include \"" + this.definition + "\"";
         if (this.stubCodeHelper.getRaw().indexOf(insertContent) < 0) {
-            this.stubCodeHelper.setText(insertContent + "\n" + this.stubCodeHelper.getRaw());
+            this.stubCodeHelper.setFront(insertContent);
         }
 
         const dir: string = path.dirname(solutionEditor.document.uri.fsPath);
