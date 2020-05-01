@@ -6,13 +6,7 @@
 #include <vector>
 #include <map>
 #include <tuple>
-#include <typeinfo>
 #include <cassert>
-
-#ifdef __GNUC__
-#include <cxxabi.h>
-#include <cstdlib>
-#endif
 
 #include "leetcode-json.h"
 
@@ -48,29 +42,15 @@ const char* ConvertException::what() const throw () {
 
 
 
-template <typename _T>
-struct _is_object : public std::is_base_of<json::Object, _T> {};
-
-template <typename _T>
-std::string _get_name() {
-    std::string name(typeid(_T).name());
-#ifdef __GNUC__
-    char* real = abi::__cxa_demangle(name.c_str(), NULL, NULL, NULL);
-    name = std::string(real);
-    free(real);
-#endif
-    return name;
-}
-
 //common template
-template <typename _T, bool object = _is_object<_T>::value>
+template <typename _T, bool object = json::_is_object<_T>::value>
 struct Convert {
     static void FromJson(_T& v, const json::Json& js) {
-        throw ConvertException(js, std::string("Conversion from JSON to ") + _get_name<_T>() + " not implemented.");
+        throw ConvertException(js, std::string("Conversion from JSON to ") + json::_get_name<_T>() + " not implemented.");
     }
 
     static json::Json ToJson(const _T& v) {
-        throw ConvertException(json::Json(), std::string("Conversion from ") + _get_name<_T>() + " to JSON not implemented.");
+        throw ConvertException(json::Json(), std::string("Conversion from ") + json::_get_name<_T>() + " to JSON not implemented.");
     }
 };
 
@@ -79,12 +59,12 @@ template <typename _T>
 struct Convert<_T, true> {
 #define ASSERT_HINT "Hey, this is not a json::Object, right?"
     static void FromJson(_T& v, const json::Json& js) {
-        static_assert(_is_object<_T>::value, ASSERT_HINT);
+        static_assert(json::_is_object<_T>::value, ASSERT_HINT);
         v = *js.GetObject<_T>();
     }
 
     static json::Json ToJson(const _T& v) {
-        static_assert(_is_object<_T>::value, ASSERT_HINT);
+        static_assert(json::_is_object<_T>::value, ASSERT_HINT);
         return v;
     }
 #undef ASSERT_HINT
@@ -97,8 +77,16 @@ struct Convert<_T&, true> {
         Convert<_T>::FromJson(v, js);
     }
 
+    static void FromJson(_T& v, json::Json&& js) {
+        Convert<_T>::FromJson(v, std::move(js));
+    }
+
     static json::Json ToJson(const _T& v) {
         return Convert<_T>::ToJson(v);
+    }
+
+    static json::Json ToJson(_T&& v) {
+        return Convert<_T>::ToJson(std::move(v));
     }
 };
 
@@ -108,8 +96,16 @@ struct Convert<_T&, false> {
         Convert<_T>::FromJson(v, js);
     }
 
+    static void FromJson(_T& v, json::Json&& js) {
+        Convert<_T>::FromJson(v, std::move(js));
+    }
+
     static json::Json ToJson(const _T& v) {
         return Convert<_T>::ToJson(v);
+    }
+
+    static json::Json ToJson(_T&& v) {
+        return Convert<_T>::ToJson(std::move(v));
     }
 };
 
@@ -119,24 +115,32 @@ struct Convert<json::Json> {
         v = js;
     }
 
+    static void FromJson(json::Json& v, json::Json&& js) {
+        v.Swap(js);
+    }
+
     static json::Json ToJson(const json::Json& v) {
         return v;
+    }
+
+    static json::Json ToJson(json::Json&& v) {
+        return std::move(v);
     }
 };
 
 
 
-#define QUICK_THROW(js, type) throw ConvertException(js, std::string("Convert from JSON to ") + _get_name<type>() + " failed.")
+#define QUICK_THROW(js, type) throw ConvertException(js, std::string("Convert from JSON to ") + json::_get_name<type>() + " failed.")
 
 template <>
 struct Convert<bool> {
     static void FromJson(bool& v, const json::Json& js) {
-        auto obj = js.GetObject<json::ObjectBoolean>();
+        auto obj = js.GetObject<json::JBoolean>();
         if (obj == NULL) QUICK_THROW(js, bool);
         v = obj->GetValue();
     }
     static json::Json ToJson(const bool& v) {
-        return json::ObjectBoolean(v);
+        return json::JBoolean(v);
     }
 };
 
@@ -145,12 +149,12 @@ struct Convert<bool> {
 template <>
 struct Convert<int> {
     static void FromJson(int& v, const json::Json& js) {
-        auto obj = js.GetObject<json::ObjectNumber>();
+        auto obj = js.GetObject<json::JNumber>();
         if (obj == NULL || !obj->IsInteger()) QUICK_THROW(js, int);
         v = obj->GetInteger();
     }
     static json::Json ToJson(const int& v) {
-        return json::ObjectNumber(v);
+        return json::JNumber(v);
     }
 };
 
@@ -159,13 +163,13 @@ struct Convert<int> {
 template <>
 struct Convert<double> {
     static void FromJson(double& v, const json::Json& js) {
-        auto obj = js.GetObject<json::ObjectNumber>();
+        auto obj = js.GetObject<json::JNumber>();
         if (obj == NULL) QUICK_THROW(js, double); 
         v = obj->GetNumber();
     }
 
     static json::Json ToJson(const double& v) {
-        return json::ObjectNumber(v);
+        return json::JNumber(v);
     }
 };
 
@@ -174,13 +178,23 @@ struct Convert<double> {
 template <>
 struct Convert<std::string> {
     static void FromJson(std::string& v, const json::Json& js) {
-        auto obj = js.GetObject<json::ObjectString>();
+        auto obj = js.GetObject<json::JString>();
         if (obj == NULL) QUICK_THROW(js, std::string);
         v = obj->GetString();
     }
+
+    static void FromJson(std::string& v, json::Json&& js) {
+        auto obj = js.GetObject<json::JString>();
+        if (obj == NULL) QUICK_THROW(js, std::string);
+        v.swap(obj->GetString());
+    }
     
     static json::Json ToJson(const std::string& v) {
-        return json::ObjectString(v);
+        return json::Json::Create<json::JString>(v);
+    }
+
+    static json::Json ToJson(std::string&& v) {
+        return json::Json::Create<json::JString>(std::move(v));
     }
 };
 
@@ -189,7 +203,7 @@ struct Convert<std::string> {
 template <typename _VAL>
 struct Convert<std::vector<_VAL>, false> {
     static void FromJson(std::vector<_VAL>& v, const json::Json& js) {
-        auto obj = js.GetObject<json::ObjectArray>();
+        auto obj = js.GetObject<json::JArray>();
         if (obj == NULL) QUICK_THROW(js, std::vector<_VAL>);
         int n = obj->GetArray().size();
         v.resize(n);
@@ -199,9 +213,10 @@ struct Convert<std::vector<_VAL>, false> {
     }
 
     static json::Json ToJson(const std::vector<_VAL>& v) {
-        json::ObjectArray js;
+        json::Json js = json::Json::Create<json::JArray>();
+        auto obj = js.GetObject<json::JArray>();
         for (auto& sub : v) {
-            js.GetArray().emplace_back(Convert<_VAL>::ToJson(sub));
+            obj->GetArray().emplace_back(Convert<_VAL>::ToJson(sub));
         }
         return js;
     }
@@ -212,7 +227,7 @@ struct Convert<std::vector<_VAL>, false> {
 template <typename _KEY, typename _VAL>
 struct Convert<std::map<_KEY, _VAL>, false> {
     static void FromJson(std::map<_KEY, _VAL>& v, const json::Json& js) {
-        auto obj = js.GetObject<json::ObjectDict>();
+        auto obj = js.GetObject<json::JDict>();
         using type = std::map<_KEY, _VAL>;
         if (obj == NULL) QUICK_THROW(js, type);
         obj->ForEach([&v](const json::Json& key, const json::Json& val) {
@@ -225,9 +240,13 @@ struct Convert<std::map<_KEY, _VAL>, false> {
     }
 
     static json::Json ToJson(const std::map<_KEY, _VAL>& v) {
-        json::ObjectDict js;
+        json::Json js = json::Json::Create<json::JDict>();
+        auto obj = js.GetObject<json::JDict>();
         for (auto& sub : v) {
-            js.Add(Convert<_KEY>::ToJson(sub.first), Convert<_VAL>::ToJson(sub.second));
+            obj->Add(
+                Convert<_KEY>::ToJson(sub.first),
+                Convert<_VAL>::ToJson(sub.second)
+            );
         }
         return js;
     }
@@ -238,15 +257,16 @@ struct Convert<std::map<_KEY, _VAL>, false> {
 template <typename... _ARGS>
 struct Convert<std::tuple<_ARGS...>, false> {
     static void FromJson(std::tuple<_ARGS...>& v, const json::Json& js) {
-        auto obj = js.GetObject<json::ObjectArray>();
+        auto obj = js.GetObject<json::JArray>();
         int n = std::tuple_size<std::tuple<_ARGS...>>::value;
         if (obj == NULL || n != obj->GetArray().size()) QUICK_THROW(js, std::tuple<_ARGS...>);
         Impl<std::tuple<_ARGS...>, sizeof...(_ARGS)>::DoFromJson(v, *obj);
     }
 
     static json::Json ToJson(const std::tuple<_ARGS...>& v) {
-        json::ObjectArray js;
-        Impl<std::tuple<_ARGS...>, sizeof...(_ARGS)>::DoToJson(v, js);
+        json::Json js = json::Json::Create<json::JArray>();
+        auto obj = js.GetObject<json::JArray>();
+        Impl<std::tuple<_ARGS...>, sizeof...(_ARGS)>::DoToJson(v, *obj);
         return js;
     }
 
@@ -254,13 +274,13 @@ struct Convert<std::tuple<_ARGS...>, false> {
 private:
     template <typename _T, size_t N>
     struct Impl {
-        static void DoFromJson(_T& v, json::ObjectArray& obj) {
+        static void DoFromJson(_T& v, json::JArray& obj) {
             Impl<_T, N-1>::DoFromJson(v, obj);
             using SubType = typename std::tuple_element<N-1, _T>::type;
             Convert<SubType>::FromJson(std::get<N-1>(v), obj.GetArray()[N-1]);
         }
 
-        static void DoToJson(const _T& v, json::ObjectArray& obj) {
+        static void DoToJson(const _T& v, json::JArray& obj) {
             Impl<_T, N-1>::DoToJson(v, obj);
             using SubType = typename std::tuple_element<N-1, _T>::type;
             obj.GetArray().emplace_back(Convert<SubType>::ToJson(std::get<N-1>(v)));
@@ -269,12 +289,12 @@ private:
 
     template <typename _T>
     struct Impl<_T, 1> {
-        static void DoFromJson(_T& v, json::ObjectArray& obj) {
+        static void DoFromJson(_T& v, json::JArray& obj) {
             using SubType = typename std::tuple_element<0, _T>::type;
             Convert<SubType>::FromJson(std::get<0>(v), obj.GetArray()[0]);
         }
 
-        static void DoToJson(const _T& v, json::ObjectArray& obj) {
+        static void DoToJson(const _T& v, json::JArray& obj) {
             using SubType = typename std::tuple_element<0, _T>::type;
             obj.GetArray().emplace_back(Convert<SubType>::ToJson(std::get<0>(v)));
         }
@@ -291,9 +311,21 @@ void FromJson(_T& v, const json::Json& js) {
 }
 
 template <typename _T>
+void FromJson(_T& v, json::Json&& js) {
+    Convert<_T>::FromJson(v, std::move(js));
+}
+
+template <typename _T>
 _T FromJson(const json::Json& js) {
     _T v;
     FromJson(v, js);
+    return v;
+}
+
+template <typename _T>
+_T FromJson(json::Json&& js) {
+    _T v;
+    FromJson(v, std::move(js));
     return v;
 }
 
@@ -312,6 +344,11 @@ _T FromJson(const std::string& raw) {
 template <typename _T>
 json::Json ToJson(const _T& v) {
     return Convert<_T>::ToJson(v);
+}
+
+template <typename _T>
+json::Json ToJson(_T&& v) {
+    return Convert<_T>::ToJson(std::move(v));
 }
 
 } // namespace conv

@@ -86,8 +86,7 @@ void Entry::Run(io::SI& in, io::MO& out) {
 }
 
 void Entry::RunAlgorithm(io::SI& in, io::MO& out) {
-    auto dummy = json::ObjectNull();
-    Handler handler(dummy);
+    Handler handler(json::Create<json::JNull>());
     handler.Handle(in, out);
 }
 
@@ -96,7 +95,7 @@ void Entry::RunSystemDesign(io::SI& in, io::MO& out) {
     int fline = in.GetLineCount();
     std::string fraw = in.GetRaw();
     auto quick_throw = [&fline, &fraw, &fobj](int idx, const std::string& info) {
-        throw EntryException(fraw, fline, fobj.GetObject<json::ObjectArray>()->GetArray()[idx].GetObject()->GetPosistion(), info);
+        throw EntryException(fraw, fline, fobj.GetObject<json::JArray>()->GetArray()[idx].GetObject()->GetPosistion(), info);
     };
 
     //get functions
@@ -106,18 +105,19 @@ void Entry::RunSystemDesign(io::SI& in, io::MO& out) {
 
     //get args
     json::Json obj(in.GetLine());
-    auto args = obj.GetObject<json::ObjectArray>();
+    auto args = obj.GetObject<json::JArray>();
     if (args == NULL) throw conv::ConvertException(obj, "Input format error.");
     if (n != args->GetArray().size()) throw EntryException(in.GetRaw(), in.GetLineCount(), args->GetPosistion(), "Number of functions and arguments not matched.");
 
     //call functions
-    json::ObjectArray ret;
+    json::Json retjs = json::Create<json::JArray>();
+    json::JArray& ret = *retjs.GetObject<json::JArray>();
     if (n > 0) {
         if (functions.front() != Handler::GetClassName()) {
             quick_throw(0, "The first function need be the constructor.");
         }
         Handler handler(args->GetArray().front());
-        ret.GetArray().emplace_back(json::ObjectNull());
+        ret.GetArray().emplace_back(json::Create<json::JNull>());
         for (int i = 1; i < n; ++i) {
             try {
                 ret.GetArray().emplace_back(handler.Handle(args->GetArray()[i], functions[i]));

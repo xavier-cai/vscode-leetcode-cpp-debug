@@ -18,25 +18,25 @@ namespace conv {
 
 template <>
 struct Convert<ListNode*> {
-    static ListNode* FromJson(const json::Json& js) {
-        auto obj = js.GetObject<json::ObjectArray>();
+    static void FromJson(ListNode* &v, const json::Json& js) {
+        auto obj = js.GetObject<json::JArray>();
         if (obj == NULL) throw ConvertException(js, "Convert failed. ListNode*.");
         int n = obj->GetArray().size();
-        if (n <= 0) return NULL;
-        ListNode* head = new ListNode(conv::FromJson<int>(obj->GetArray().front()));
-        ListNode* current = head;
+        if (n <= 0) { v = NULL; return; }
+        v = new ListNode(conv::FromJson<int>(obj->GetArray().front()));
+        ListNode* current = v;
         for (int i = 1; i < n; ++i) {
             current->next = new ListNode(conv::FromJson<int>(obj->GetArray()[i]));
             current = current->next;
         }
-        return head;
     }
 
     static json::Json ToJson(ListNode* const &v) {
-        json::ObjectArray js;
+        json::Json js = json::Json::Create<json::JArray>();
+        auto obj = js.GetObject<json::JArray>();
         ListNode* current = v;
         while (current != NULL) {
-            js.GetArray().emplace_back(conv::ToJson<int>(current->val));
+            obj->GetArray().emplace_back(conv::ToJson<int>(current->val));
             current = current->next;
         }
         return js;
@@ -45,41 +45,41 @@ struct Convert<ListNode*> {
 
 template <>
 struct Convert<TreeNode*> {
-    static TreeNode* FromJson(const json::Json& js) {
-        auto obj = js.GetObject<json::ObjectArray>();
+    static void FromJson(TreeNode* &v, const json::Json& js) {
+        auto obj = js.GetObject<json::JArray>();
         if (obj == NULL) throw ConvertException(js, "Convert failed. TreeNode*.");
         int n = obj->GetArray().size();
-        if (n <= 0) return NULL;
+        if (n <= 0) { v = NULL; return; }
         auto read = [&obj, &n](int idx) -> TreeNode* {
             if (idx >= n) return NULL;
             auto& js = obj->GetArray()[idx];
-            if (js.GetObject<json::ObjectNull>() != NULL) return NULL;
+            if (js.Is<json::JNull>()) return NULL;
             return new TreeNode(conv::FromJson<int>(js));
         };
-        TreeNode* root = read(0);
+        v = read(0);
         std::queue<TreeNode*> Q;
-        if (root != NULL) Q.push(root);
+        if (v != NULL) Q.push(v);
         for (int i = 1; i < n && !Q.empty();) {
             TreeNode* current = Q.front(); Q.pop();
             if ((current->left = read(i++)) != NULL) Q.push(current->left);
             if ((current->right = read(i++)) != NULL) Q.push(current->right);
         }
-        return root;
     }
 
     static json::Json ToJson(TreeNode* const &v) {
-        json::ObjectArray js;
+        json::Json js = json::Create<json::JArray>();
+        auto obj = js.GetObject<json::JArray>();
         std::queue<TreeNode*> Q;
         if (v != NULL) Q.push(v);
         int nullCount = 0;
         while (!Q.empty() && nullCount < Q.size()) {
             TreeNode* current = Q.front(); Q.pop();
             if (current == NULL) {
-                js.GetArray().emplace_back(json::ObjectNull());
+                obj->GetArray().emplace_back(json::JNull());
                 nullCount -= 1;
                 continue;
             }
-            js.GetArray().emplace_back(conv::ToJson<int>(current->val));
+            obj->GetArray().emplace_back(conv::ToJson<int>(current->val));
             Q.push(current->left);
             Q.push(current->right);
             if (current->left == NULL) nullCount += 1;

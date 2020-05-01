@@ -210,7 +210,7 @@ export class CppDebugger extends Debugger {
                 func = choice.value;
             }
 
-            code.line(`json::Json Handle(const json::Json& in, const std::string& fname) { return json::ObjectNull(); }`);
+            code.line(`json::Json Handle(const json::Json& in, const std::string& fname) { return json::Create<json::JNull>(); }`);
             code.line(`void Handle(io::SI& in, io::MO& out) {`).right();
             for (const arg of func.args) {
                 code.line(`${arg.type} ${arg.name};`)
@@ -236,7 +236,7 @@ export class CppDebugger extends Debugger {
                 const callCode: string = `solution_->${func.name}(${genArgsCode(func)})`;
                 if (func.type == "void") {
                     code.line(`${callCode};`)
-                        .line(`return json::ObjectNull();`);
+                        .line(`return json::Create<json::JNull>();`);
                 }
                 else {
                     code.line(`return conv::ToJson(${callCode});`);
@@ -245,7 +245,7 @@ export class CppDebugger extends Debugger {
             }
             code.line(`#undef CASE`)
                 .line(`throw std::string("Invalid function name.");`)
-                .line(`return json::ObjectNull();`)
+                .line(`return json::Create<json::JNull>();`)
                 .left().line(`}`);
         }
 

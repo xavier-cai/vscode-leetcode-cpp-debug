@@ -7,8 +7,16 @@
 #include <ostream>
 #include <vector>
 #include <map>
+#include <list>
 #include <cstring>
+#include <typeinfo>
 #include <functional>
+#include <cassert>
+
+#ifdef __GNUC__
+#include <cxxabi.h>
+#include <cstdlib>
+#endif
 
 #ifndef NULL
 #define NULL 0
@@ -18,33 +26,34 @@ namespace lc {
 
 namespace clone {
 
-class Interface {
+class Base {
 public:
-    virtual ~Interface() {}
-    virtual Interface* DoClone() const = 0;
+    virtual ~Base() {}
+    virtual Base* DoClone() const = 0;
 
 protected:
-    virtual void DoCopyTo(Interface* clone) const {}
-}; // class Interface
+    virtual void DoCopyTo(Base* clone) const {}
+}; // class Base
 
-template<typename _THIS, typename _BASE = Interface>
+template<typename _THIS, typename _BASE = Base>
 class Template : public _BASE {
 public:
-    virtual Interface* DoClone() const override {
-        if (dynamic_cast<const Interface*>(this) == NULL) return NULL;
+    Base* DoClone() const override {
+        if (dynamic_cast<const Base*>(this) == NULL) return NULL;
         if (dynamic_cast<const _THIS*>(this) == NULL) return NULL;
-        Interface* clone = dynamic_cast<Interface*>(new _THIS(*dynamic_cast<const _THIS*>(this)));
-        this->DoCopyTo(clone);
-        return clone;
+        const _THIS* me = dynamic_cast<const _THIS*>(this);
+        _THIS* clone = new _THIS(*me);
+        this->DoCopyTo(dynamic_cast<Base*>(clone));
+        return dynamic_cast<Base*>(clone);
     }
 
     _THIS* Clone() const {
-        return dynamic_cast<_THIS*>(this->DoClone());
+        return dynamic_cast<_THIS*>(DoClone());
     }
 
 protected:
     virtual void DoCopy(_THIS* clnoe) const {}
-    virtual void DoCopyTo(Interface* clone) const override {
+    virtual void DoCopyTo(Base* clone) const override {
         _BASE::DoCopyTo(clone);
         this->DoCopy(dynamic_cast<_THIS*>(clone));
     }
@@ -95,43 +104,105 @@ JsonMask* JsonMask::Next() const {
 
 
 
-class Object : public clone::Interface {
+class Object : public clone::Base {
 public:
-    enum Type {
-        JSON_NULL = 1,
-        BOOLEAN = 2,
-        NUMBER = 4,
-        STRING = 8,
-        ARRAY = 16,
-        OBJECT = 32, //DICT
-    };
-
     virtual ~Object() {}
 
-    Type GetType() const;
-    JsonMask* GetMask() const;
-    void SetMask(JsonMask* mask);
+    template<typename _T>
+    bool Is() const {
+        return dynamic_cast<const _T*>(this) != NULL;
+    }
+    const std::string& GetName() const;
     int GetPosistion() const;
     void SetPosition(int pos);
-    int Parse(const std::string& raw, int start = 0);
+    int Parse(const std::string& raw, int start = 0, JsonMask* mask = NULL);
 
     friend std::ostream& operator << (std::ostream& os, const Object& obj);
 
 protected:
     Object();
-    void SetType(Type type);
+    virtual const std::string& Name() const = 0;
     //return length
-    virtual int DoParse(const std::string& raw, int start) = 0;
+    virtual int DoParse(const std::string& raw, int start, JsonMask* mask) = 0;
     virtual void Print(std::ostream& os) const = 0;
 
     //return length
     int SkipSpaces(const std::string& raw, int start, bool error = true);
+    static int SkipSpacesWithoutError(const std::string& raw, int start);
 
 private:
-    Type type_;
-    JsonMask* mask_;
     int pos_;
 }; // class Object
+
+
+
+template <typename _T>
+struct _is_object : public std::is_base_of<json::Object, _T> {};
+
+template <typename _T>
+std::string _get_name() {
+    std::string name(typeid(_T).name());
+#ifdef __GNUC__
+    char* real = abi::__cxa_demangle(name.c_str(), NULL, NULL, NULL);
+    name = std::string(real);
+    free(real);
+#endif
+    return name;
+}
+
+
+
+class ObjectManager {
+public:
+    typedef std::function<Object*()> Constructor;
+    typedef std::function<bool(const std::string&, int)> Checker;
+    struct Api {
+        int mask;
+        Constructor constructor;
+        Checker checker;
+    }; // struct ObjectApi
+
+    template <typename _T>
+    static void RegistObject(Checker checker, int id) {
+        GetInstance().apis_[typeid(_T).hash_code()] = {
+            1 << id,
+            []() { return new _T(); },
+            checker
+        };
+    }
+
+    template <typename _T>
+    static const Api& GetApi() {
+        auto find = GetInstance().apis_.find(typeid(_T).hash_code());
+        if (find == GetInstance().apis_.end()) throw std::string("Unregisted type [") + _get_name<_T>() + "].";
+        return find->second;
+    }
+
+    static void Until(std::function<bool(const Api&)> cb) {
+        for (auto& ite : GetInstance().apis_) {
+            if (cb(ite.second)) break;
+        }
+    }
+
+private:
+    std::map<std::size_t, Api> apis_;
+
+    ObjectManager() {}
+    static ObjectManager& GetInstance();
+}; // class JsonManager
+
+ObjectManager& ObjectManager::GetInstance() {
+    static ObjectManager instance;
+    return instance;
+}
+
+#define REGIST_JSON_OBJECT(type, checker, id) \
+struct _##type##_ObjectRegister { \
+    _##type##_ObjectRegister() { \
+        static_assert(std::is_base_of<Object, type>::value, "Only json::Object can be registed."); \
+        json::ObjectManager::RegistObject<type>(checker, id); \
+    } \
+} _##type##_ObjectRegister_trigger_instance
 
 
 
@@ -146,9 +217,25 @@ public:
     Json& operator = (const Json& js); 
     ~Json();
 
+    template <typename _T, typename... _ARGS>
+    static Json Create(_ARGS&&... args) {
+        static_assert(_is_object<_T>::value, "Type need be Object.");
+        Json js;
+        js.obj_ = new _T(args...);
+        return js;
+    }
+
+    template <typename _T>
+    bool Is() const {
+        return this->obj_ != NULL && this->obj_->Is<_T>();
+    }
     Object* GetObject() const;
     template <typename _T>
     _T* GetObject() const { return dynamic_cast<_T*>(this->obj_); }
+    template <typename _T>
+    static int GetMask() {
+        return ObjectManager::GetApi<_T>().mask;
+    }
     void Swap(Json& js);
 
     int Parse(const std::string& raw, int start = 0, JsonMask* mask = NULL, bool all = true);
@@ -211,22 +298,10 @@ const char* JsonException::what() const throw() {
 
 
 // implements after JsonException
-Object::Object() : mask_(NULL), pos_(-1) {}
+Object::Object() : pos_(-1) {}
 
-Object::Type Object::GetType() const {
-    return this->type_;
-}
-
-void Object::SetType(Object::Type type) {
-    this->type_ = type;
-}
-
-JsonMask* Object::GetMask() const {
-    return this->mask_;
-}
-
-void Object::SetMask(JsonMask* mask) {
-    this->mask_ = mask;
+const std::string& Object::GetName() const {
+    return this->Name();
 }
 
 int Object::GetPosistion() const {
@@ -237,8 +312,8 @@ void Object::SetPosition(int pos) {
     this->pos_ = pos;
 }
 
-int Object::Parse(const std::string& raw, int start) {
-    return this->DoParse(raw, start);
+int Object::Parse(const std::string& raw, int start, JsonMask* mask) {
+    return this->DoParse(raw, start, mask);
 }
 
 int Object::SkipSpaces(const std::string& raw, int start, bool error) {
@@ -248,21 +323,14 @@ int Object::SkipSpaces(const std::string& raw, int start, bool error) {
     return idx - start;
 }
 
-std::ostream& operator << (std::ostream& os, const Object& obj) {
-    obj.Print(os);
-    return os;
+int Object::SkipSpacesWithoutError(const std::string& raw, int start) {
+    int idx = start, n = raw.size();
+    while (idx < n && raw[idx] == ' ') ++idx;
+    return idx - start;
 }
 
-std::ostream& operator << (std::ostream& os, const Object::Type& type) {
-    switch (type)
-    {
-    case Object::JSON_NULL: os << "json::null"; break;
-    case Object::NUMBER: os << "json::number"; break;
-    case Object::STRING: os << "json::string"; break;
-    case Object::ARRAY: os << "json::array"; break;
-    case Object::OBJECT: os << "json::dict"; break;
-    default: throw JsonException(Json(), std::string("Unkonwn json type.") + std::to_string((int)type));
-    }
+std::ostream& operator << (std::ostream& os, const Object& obj) {
+    obj.Print(os);
     return os;
 }
 
@@ -271,9 +339,17 @@ std::ostream& operator << (std::ostream& os, const Object::Type& type) {
 // implements after JsonException
 Json::Json() : obj_(NULL) {}
 
-Json::Json(const std::string& raw, int start, JsonMask* mask, bool all) : obj_(NULL) { this->Parse(raw, start, mask, all); }
+Json::Json(const std::string& raw, int start, JsonMask* mask, bool all) : 
+    obj_(NULL)
+{
+    this->Parse(raw, start, mask, all);
+}
 
-Json::Json(const std::string& raw, int start, int& len, JsonMask* mask, bool all) : obj_(NULL) { len = this->Parse(raw, start, mask, all); }
+Json::Json(const std::string& raw, int start, int& len, JsonMask* mask, bool all) :
+    obj_(NULL)
+{
+    len = this->Parse(raw, start, mask, all);
+}
 
 Json::Json(const Object& obj) : obj_(dynamic_cast<Object*>(obj.DoClone())) {}
 
@@ -307,47 +383,64 @@ std::ostream& operator << (std::ostream& os, const Json& js) {
 
 
 
-class ObjectNull : public clone::Template<ObjectNull, Object> {
+class JNull : public clone::Template<JNull, Object> {
 public:
-    ObjectNull();
+    JNull();
+
+    static bool QuickCheck(const std::string& raw, int start);
 
 protected:
-    virtual int DoParse(const std::string& raw, int start) override;
+    virtual const std::string& Name() const override;
+    virtual int DoParse(const std::string& raw, int start, JsonMask* mask) override;
     virtual void Print(std::ostream& os) const override;
 
 private:
     static const std::string text_;
-}; // class ObjectNull
+}; // class JNull
 
-const std::string ObjectNull::text_("null");
+REGIST_JSON_OBJECT(JNull, JNull::QuickCheck, 0);
 
-ObjectNull::ObjectNull() { this->Object::SetType(Object::JSON_NULL); }
+const std::string JNull::text_("null");
 
-int ObjectNull::DoParse(const std::string& raw, int start) {
-    int n = raw.size(), m = this->text_.size();
-    int idx = start + this->SkipSpaces(raw, start);
-    for (int cmp = 0; cmp < m; ++cmp, ++idx) {
-        if (idx >= n || raw[idx] != this->text_[cmp]) {
-            throw JsonException(*this, raw, idx);
-        }
-    }
-    return m;
+JNull::JNull() {}
+
+bool JNull::QuickCheck(const std::string& raw, int start) {
+    int idx = start + SkipSpacesWithoutError(raw, start);
+    int n = raw.size(), m = text_.size();
+    if (idx + m > n) return false;
+    return std::strncmp(text_.c_str(), raw.c_str() + idx, m) == 0;
 }
 
-void ObjectNull::Print(std::ostream& os) const {
+const std::string& JNull::Name() const {
+    static std::string name("Null");
+    return name;
+}
+
+int JNull::DoParse(const std::string& raw, int start, JsonMask* mask) {
+    int idx = start + SkipSpaces(raw, start);
+    if (!QuickCheck(raw, idx)) {
+        throw JsonException(*this, raw, idx);
+    }
+    return this->text_.size();
+}
+
+void JNull::Print(std::ostream& os) const {
     os << this->text_;
 }
 
 
 
-class ObjectBoolean : public clone::Template<ObjectBoolean, Object> {
+class JBoolean : public clone::Template<JBoolean, Object> {
 public:
-    ObjectBoolean();
-    ObjectBoolean(bool value);
+    JBoolean();
+    JBoolean(bool value);
     bool GetValue() const;
+    //<0: not matched, 0: false, >0: true
+    static int QuickCheck(const std::string& raw, int start);
 
 protected:
-    virtual int DoParse(const std::string& raw, int start) override;
+    virtual const std::string& Name() const override;
+    virtual int DoParse(const std::string& raw, int start, JsonMask* mask) override;
     virtual void Print(std::ostream& os) const override;
 
 private:
@@ -355,118 +448,139 @@ private:
 
     static const std::string true_;
     static const std::string false_;
-}; // class ObjectNull
+}; // class JNull
 
-const std::string ObjectBoolean::true_("true");
-const std::string ObjectBoolean::false_("false");
+#define OBJECT_BOOLEAN_CHECKER [](const std::string& raw, int start) { return JBoolean::QuickCheck(raw, start) >= 0; }
+REGIST_JSON_OBJECT(JBoolean, OBJECT_BOOLEAN_CHECKER, 1);
+#undef OBJECT_BOOLEAN_CHECKER
 
-ObjectBoolean::ObjectBoolean() : value_(false) { this->Object::SetType(Object::BOOLEAN); }
+const std::string JBoolean::true_("true");
+const std::string JBoolean::false_("false");
 
-ObjectBoolean::ObjectBoolean(bool value) : value_(value) { this->Object::SetType(Object::BOOLEAN); }
-
-bool ObjectBoolean::GetValue() const {
-    return this->value_;
-}
-
-int ObjectBoolean::DoParse(const std::string& raw, int start) {
-    int idx = start + this->SkipSpaces(raw, start);
-    int n = raw.size(), mt = this->true_.size(), mf = this->false_.size();
+int JBoolean::QuickCheck(const std::string& raw, int start) {
+    int idx = start + SkipSpacesWithoutError(raw, start);
+    int n = raw.size(), mt = true_.size(), mf = false_.size();
     auto check = [&](const std::string& str) -> bool {
         int m = str.size();
         if (idx + m > n) return false;
         return std::strncmp(str.c_str(), raw.c_str() + idx, m) == 0;
     };
-    if (check(this->true_)) {
-        this->value_ = true;
-        return mt;
-    }
-    if (check(this->false_)) {
-        this->value_ = false;
-        return mf;
-    }
-    throw JsonException(*this, raw, idx);
-    return 0;
+    if (check(true_)) return 1;
+    if (check(false_)) return 0;
+    return -1;
 }
 
-void ObjectBoolean::Print(std::ostream& os) const {
+JBoolean::JBoolean() : value_(false) {}
+
+JBoolean::JBoolean(bool value) : value_(value) {}
+
+bool JBoolean::GetValue() const {
+    return this->value_;
+}
+
+const std::string& JBoolean::Name() const {
+    static std::string name("Boolean");
+    return name;
+}
+
+int JBoolean::DoParse(const std::string& raw, int start, JsonMask* mask) {
+    int idx = start + this->SkipSpaces(raw, start);
+    int ret = this->QuickCheck(raw, idx);
+    if (ret < 0) throw JsonException(*this, raw, idx);
+    if (ret > 0) {
+        this->value_ = true;
+        return this->true_.size();
+    }
+    this->value_ = false;
+    return this->false_.size();
+}
+
+void JBoolean::Print(std::ostream& os) const {
     os << (this->value_ ? this->true_ : this->false_);
 }
 
 
 
-//TODO: scientific notation not supported yet
-class ObjectNumber : public clone::Template<ObjectNumber, Object> {
+class JNumber : public clone::Template<JNumber, Object> {
 public:
-    ObjectNumber();
-    ObjectNumber(int v);
-    ObjectNumber(double v);
+    JNumber();
+    JNumber(int v);
+    JNumber(double v);
     int GetInteger() const;
     double GetNumber() const;
     bool IsInteger() const;
     void SetValue(int v);
     void SetValue(double v);
 
+    static bool IsNumberCharacter(char c);
+
 protected:
-    virtual int DoParse(const std::string& raw, int start) override;
+    virtual const std::string& Name() const override;
+    virtual int DoParse(const std::string& raw, int start, JsonMask* mask) override;
     virtual void Print(std::ostream& os) const override;
 
 private:
     int integer_;
     double number_;
     bool isInteger_;
-}; // class ObjectNumber
+}; // class JNumber
 
-ObjectNumber::ObjectNumber() :
+#define OBJECT_NUMBER_CHECKER [](const std::string& raw, int start) { return JNumber::IsNumberCharacter(raw[start]); }
+REGIST_JSON_OBJECT(JNumber, OBJECT_NUMBER_CHECKER, 2);
+#undef OBJECT_NUMBER_CHECKER
+
+bool JNumber::IsNumberCharacter(char c) {
+    return (c >= '0' && c <= '9')
+        || c == '-'
+        || c == '.';
+}
+
+JNumber::JNumber() :
     integer_(0),
     number_(0.0),
     isInteger_(true)
-{
-    this->Object::SetType(Object::NUMBER);
-}
+{}
 
-ObjectNumber::ObjectNumber(int v)
-{
-    this->Object::SetType(Object::NUMBER);
+JNumber::JNumber(int v) {
     this->SetValue(v);
 }
 
-ObjectNumber::ObjectNumber(double v)
-{
-    this->Object::SetType(Object::NUMBER);
+JNumber::JNumber(double v) {
     this->SetValue(v);
 }
 
-int ObjectNumber::GetInteger() const {
+int JNumber::GetInteger() const {
     return this->integer_;
 }
 
-double ObjectNumber::GetNumber() const {
+double JNumber::GetNumber() const {
     return this->number_;
 }
 
-bool ObjectNumber::IsInteger() const {
+bool JNumber::IsInteger() const {
     return this->isInteger_;
 }
 
-void ObjectNumber::SetValue(int v) {
+void JNumber::SetValue(int v) {
     this->number_ = this->integer_ = v;
     this->isInteger_ = true;
 }
 
-void ObjectNumber::SetValue(double v) {
+void JNumber::SetValue(double v) {
     this->integer_ = this->number_ = v;
     this->isInteger_ = false;
 }
 
-int ObjectNumber::DoParse(const std::string& raw, int start) {
+const std::string& JNumber::Name() const {
+    static std::string name("Number");
+    return name;
+}
+
+int JNumber::DoParse(const std::string& raw, int start, JsonMask* mask) {
     int idx = start + this->SkipSpaces(raw, start), n = raw.size();
     std::stringstream ss1, ss2;
     int from = idx;
-    while (idx < n && (
-        (raw[idx] >= '0' && raw[idx] <= '9')
-        || raw[idx] == '-'
-        || raw[idx] == '.'
-    )) {
+    while (idx < n && this->IsNumberCharacter(raw[idx])) {
         ss1 << raw[idx];
         ss2 << raw[idx];
         ++idx;
@@ -480,7 +594,7 @@ int ObjectNumber::DoParse(const std::string& raw, int start) {
     return idx - start;
 }
 
-void ObjectNumber::Print(std::ostream& os) const {
+void JNumber::Print(std::ostream& os) const {
     if (this->isInteger_) os << this->integer_;
     else os << this->number_;
 }
@@ -488,40 +602,54 @@ void ObjectNumber::Print(std::ostream& os) const {
 
 
 //TODO: escape not supported yet
-class ObjectString : public clone::Template<ObjectString, Object> {
+class JString : public clone::Template<JString, Object> {
 public:
-    ObjectString();
-    ObjectString(const std::string& s);
-    ObjectString(std::string&& s);
+    JString();
+    JString(const std::string& s);
+    JString(std::string&& s);
     const std::string& GetString() const;
+    std::string& GetString();
     void SetString(const std::string& s);
 
 protected:
-    virtual int DoParse(const std::string& raw, int start) override;
+    virtual const std::string& Name() const override;
+    virtual int DoParse(const std::string& raw, int start, JsonMask* mask) override;
     virtual void Print(std::ostream& os) const override;
 
 private:
     std::string string_;
-}; // class ObjectString
+}; // class JString
 
-ObjectString::ObjectString() { this->Object::SetType(Object::STRING); }
+#define OBJECT_STRING_CHECKER [](const std::string& raw, int start) { return raw[start] == '\"'; }
+REGIST_JSON_OBJECT(JString, OBJECT_STRING_CHECKER, 3);
+#undef OBJECT_STRING_CHECKER
 
-ObjectString::ObjectString(const std::string& s) : string_(s) { this->Object::SetType(Object::STRING); }
+JString::JString() {}
 
-ObjectString::ObjectString(std::string&& s) { 
-    this->Object::SetType(Object::STRING);
+JString::JString(const std::string& s) : string_(s) {}
+
+JString::JString(std::string&& s) {
     this->string_.swap(s);
 }
 
-const std::string& ObjectString::GetString() const {
+const std::string& JString::GetString() const {
     return this->string_;
 }
 
-void ObjectString::SetString(const std::string& s) {
+std::string& JString::GetString() {
+    return this->string_;
+}
+
+void JString::SetString(const std::string& s) {
     this->string_ = s;
 }
 
-int ObjectString::DoParse(const std::string& raw, int start) {
+const std::string& JString::Name() const {
+    static std::string name("String");
+    return name;
+}
+
+int JString::DoParse(const std::string& raw, int start, JsonMask* mask) {
     int idx = start + this->SkipSpaces(raw, start), n = raw.size();
     if (raw[idx] != '\"') throw JsonException(*this, raw, idx);
     std::stringstream ss;
@@ -531,45 +659,55 @@ int ObjectString::DoParse(const std::string& raw, int start) {
     return ++idx - start;
 }
 
-void ObjectString::Print(std::ostream& os) const {
+void JString::Print(std::ostream& os) const {
     os << '\"' << this->string_ << '\"';
 }
 
 
 
-class ObjectArray : public clone::Template<ObjectArray, Object> {
+class JArray : public clone::Template<JArray, Object> {
 public:
     typedef std::vector<Json> Array;
-    ObjectArray();
+    JArray();
     Array& GetArray();
     const Array& GetArray() const;
 
 protected:
-    virtual int DoParse(const std::string& raw, int start) override;
+    virtual const std::string& Name() const override;
+    virtual int DoParse(const std::string& raw, int start, JsonMask* mask) override;
     virtual void Print(std::ostream& os) const override;
 
 private:
     Array array_;
-}; // class ObjectString
+}; // class JString
 
-ObjectArray::ObjectArray() { this->Object::SetType(Object::ARRAY); }
+#define OBJECT_ARRAY_CHECKER [](const std::string& raw, int start) { return raw[start] == '['; }
+REGIST_JSON_OBJECT(JArray, OBJECT_ARRAY_CHECKER, 4);
+#undef OBJECT_ARRAY_CHECKER
 
-ObjectArray::Array& ObjectArray::GetArray() {
+JArray::JArray() {}
+
+JArray::Array& JArray::GetArray() {
     return this->array_;
 }
 
-const ObjectArray::Array& ObjectArray::GetArray() const {
+const JArray::Array& JArray::GetArray() const {
     return this->array_;
 }
 
-int ObjectArray::DoParse(const std::string& raw, int start) {
+const std::string& JArray::Name() const {
+    static std::string name("Array");
+    return name;
+}
+
+int JArray::DoParse(const std::string& raw, int start, JsonMask* mask) {
     int idx = start + this->SkipSpaces(raw, start), n = raw.size();
     if (raw[idx] != '[') throw JsonException(*this, raw, idx);
     idx += this->SkipSpaces(raw, idx + 1) + 1;
     if (raw[idx] == ']') return ++idx - start;
     for (; idx < n; ++idx) {
         int len;
-        this->array_.emplace_back(raw, idx, len, this->GetMask(), false);
+        this->array_.emplace_back(raw, idx, len, mask, false);
         idx += len;
         idx += this->SkipSpaces(raw, idx);
         if (raw[idx] != ',' && raw[idx] != ']') throw JsonException(*this, raw, idx);
@@ -579,7 +717,7 @@ int ObjectArray::DoParse(const std::string& raw, int start) {
     return idx - start;
 }
 
-void ObjectArray::Print(std::ostream& os) const {
+void JArray::Print(std::ostream& os) const {
     os << '[';
     for (int i = 0, n = this->array_.size(); i < n; ++i) {
         if (i != 0) os << ',';
@@ -590,9 +728,13 @@ void ObjectArray::Print(std::ostream& os) const {
 
 
 
-class ObjectDict : public clone::Template<ObjectDict, Object> {
+class JDict : public clone::Template<JDict, Object> {
 public:
-    ObjectDict();
+    JDict();
+    JDict(JDict&& dict);
+    JDict(const JDict& dict);
+    JDict& operator = (const JDict& dict);
+
     template <typename _T>
     bool Have(const _T& key) {
         return this->keys_.find(ToString(key)) != this->keys_.end();
@@ -602,52 +744,74 @@ public:
         auto k = ToString(key);
         auto find = this->keys_.find(k);
         if (find == this->keys_.end()) return false;
-        this->keys_.erase(k);
-        this->vals_.erase(k);
+        this->vals_.erase(find->second);
+        this->keys_.erase(find);
         return true;
     }
     template <typename _T>
-    bool Add(_T&& key, Json&& v) {
+    bool Add(_T&& key, Json&& v = JNull()) {
         auto k = ToString(key);
         auto find = this->keys_.find(k);
         if (find != this->keys_.end()) return false;
-        this->vals_.emplace(k, v);
-        this->keys_.emplace(k, std::move(ObjectString(k)));
+        JString jkey(k);
+        this->keys_.emplace(
+            std::move(k),
+            this->vals_.emplace(this->vals_.end(),
+                std::move(jkey),
+                std::forward<Json>(v)
+            )
+        );
         return true;
     }
-    bool Add(Json&& key, Json&& v) {
+    bool Add(Json&& key, Json&& v = JNull()) {
         auto k = ToString(key);
         auto find = this->keys_.find(k);
         if (find != this->keys_.end()) return false;
-        this->vals_.emplace(k, v);
-        this->keys_.emplace(k, key);
+        this->keys_.emplace(
+            std::move(k),
+            this->vals_.emplace(this->vals_.end(),
+                std::forward<Json>(key),
+                std::forward<Json>(v)
+            )
+        );
         return true;
     }
     template <typename _T>
     Json& operator [] (const _T& key) {
-        auto find = this->vals_.find(ToString(key));
-        if (find == this->vals_.end()) throw JsonException(*this, "Key not find.");
-        return find->second;
+        auto find = this->keys_.find(ToString(key));
+        if (find == this->keys_.end()) throw JsonException(*this, "Key not find.");
+        return find->second->second;
     }
     template <typename _T>
     const Json& operator [] (const _T& key) const {
-        auto find = this->vals_.find(ToString(key));
-        if (find == this->vals_.end()) throw JsonException(*this, "Key not find.");
-        return find->second;
+        auto find = this->keys_.find(ToString(key));
+        if (find == this->keys_.end()) throw JsonException(*this, "Key not find.");
+        return find->second->second;
+    }
+    void Until(std::function<bool(const Json&, Json&)> cb) {
+        for (auto ite = this->vals_.begin(); ite != this->vals_.end(); ++ite) {
+            if (cb(ite->first, ite->second)) break;
+        }
+    }
+    void Until(std::function<bool(const Json&, const Json&)> cb) const {
+        for (auto ite = this->vals_.begin(); ite != this->vals_.end(); ++ite) {
+            if (cb(ite->first, ite->second)) break;
+        }
     }
     void ForEach(std::function<void(const Json&, Json&)> cb) {
-        for (auto ite = this->keys_.begin(); ite != this->keys_.end(); ++ite) {
-            cb(ite->second, this->vals_.at(ite->first));
+        for (auto ite = this->vals_.begin(); ite != this->vals_.end(); ++ite) {
+            cb(ite->first, ite->second);
         }
     }
     void ForEach(std::function<void(const Json&, const Json&)> cb) const {
-        for (auto ite = this->keys_.begin(); ite != this->keys_.end(); ++ite) {
-            cb(ite->second, this->vals_.at(ite->first));
+        for (auto ite = this->vals_.begin(); ite != this->vals_.end(); ++ite) {
+            cb(ite->first, ite->second);
         }
     }
 
 protected:
-    virtual int DoParse(const std::string& raw, int start) override;
+    virtual const std::string& Name() const override;
+    virtual int DoParse(const std::string& raw, int start, JsonMask* mask) override;
     virtual void Print(std::ostream& os) const override;
 
 private:
@@ -661,27 +825,60 @@ private:
         return v;
     }
 
-    std::map<std::string, Json> keys_;
-    std::map<std::string, Json> vals_;
-}; // class ObjectDict
+    std::map<std::string, std::list<std::pair<Json, Json>>::iterator> keys_;
+    std::list<std::pair<Json, Json>> vals_;
+}; // class JDict
 
-ObjectDict::ObjectDict() { this->Object::SetType(Object::OBJECT); }
+#define OBJECT_DICT_CHECKER [](const std::string& raw, int start) { return raw[start] == '{'; }
+REGIST_JSON_OBJECT(JDict, OBJECT_DICT_CHECKER, 5);
+#undef OBJECT_DICT_CHECKER
 
-int ObjectDict::DoParse(const std::string& raw, int start) {
+JDict::JDict() {}
+
+JDict::JDict(JDict&& dict) : 
+    keys_(std::move(dict.keys_)),
+    vals_(std::move(dict.vals_))
+{
+    this->SetPosition(dict.GetPosistion());
+}
+
+JDict::JDict(const JDict& dict) {
+    *this = dict;
+}
+
+JDict& JDict::operator = (const JDict& dict) {
+    this->SetPosition(dict.GetPosistion());
+    this->vals_ = dict.vals_;
+    for (auto ite = this->vals_.begin(); ite != this->vals_.end(); ++ite) {
+        this->keys_.emplace(ToString(ite->first), ite);
+    }
+    return *this;
+}
+
+const std::string& JDict::Name() const {
+    static std::string name("Object");
+    return name;
+}
+
+int JDict::DoParse(const std::string& raw, int start, JsonMask* mask) {
     int idx = start + this->SkipSpaces(raw, start), n = raw.size();
     if (raw[idx] != '{') throw JsonException(*this, raw, idx);
     idx += this->SkipSpaces(raw, idx + 1) + 1;
     if (raw[idx] == '}') return ++idx - start;
     for (; idx < n; ++idx) {
         int len;
-        Json key(raw, idx, len, this->GetMask(), false);
+        Json key(raw, idx, len, mask, false);
         idx += len;
         idx += this->SkipSpaces(raw, idx);
-        if (raw[idx] != ':') throw JsonException(*this, raw, idx);
-        ++idx;
-        Json val(raw, idx, len, this->GetMask(), false);
-        if (!this->Add(std::move(key), std::move(val))) throw JsonException(*this, raw, idx - 2, "Existed key.");
-        idx += len;
+        if (raw[idx] == ':') {
+            ++idx;
+            Json val(raw, idx, len, mask, false);
+            if (!this->Add(std::move(key), std::move(val))) throw JsonException(*this, raw, idx - 2, "Existed key.");
+            idx += len;
+        }
+        else if (raw[idx] == ',' || raw[idx] == '}') {
+            if (!this->Add(std::move(key), JNull())) throw JsonException(*this, raw, idx - 2, "Existed key.");
+        }
         idx += this->SkipSpaces(raw, idx);
         if (raw[idx] != ',' && raw[idx] != '}') throw JsonException(*this, raw, idx);
         if (raw[idx] == '}') return ++idx - start;
@@ -690,12 +887,15 @@ int ObjectDict::DoParse(const std::string& raw, int start) {
     return idx - start;
 }
 
-void ObjectDict::Print(std::ostream& os) const {
+void JDict::Print(std::ostream& os) const {
     os << '{';
     int idx = 0;
-    for (auto ite = this->keys_.begin(); ite != this->keys_.end(); ++ite, ++idx) {
+    for (auto ite = this->vals_.begin(); ite != this->vals_.end(); ++ite, ++idx) {
         if (idx != 0) os << ',';
-        os << ite->second << ':' << this->vals_.at(ite->first);
+        os << ite->first;
+        if (!ite->second.Is<JNull>()) {
+            os << ':' << ite->second;
+        }
     }
     os << '}';
 }
@@ -703,34 +903,50 @@ void ObjectDict::Print(std::ostream& os) const {
 
 // post implemention
 int Json::Parse(const std::string& raw, int start, JsonMask* mask, bool all) {
-    auto flag = [&mask](Object::Type type) -> bool { return mask == NULL || (mask->Mask() & type); };
-    auto number = [](char c) -> bool { return (c >= '0' && c <= '9') || c == '.' || c == '-'; };
-    auto check = [&](const std::string& str, int i) -> bool {
-        int m = str.size();
-        if (i + m > raw.size()) return false;
-        return std::strncmp(str.c_str(), raw.c_str() + i, m) == 0;
-    };
+    auto flag = [&mask](int m) -> bool { return mask == NULL || (mask->Mask() & m); };
     if (this->obj_ != NULL) delete this->obj_;
     this->obj_ = NULL;
     int idx = start, n = raw.size();
     while (idx < n && raw[idx] == ' ') ++idx;
     if (idx >= n) throw JsonException(*this, raw, idx);
-    if (flag(Object::JSON_NULL) && check("null", idx)) this->obj_ = new ObjectNull();
-    else if (flag(Object::BOOLEAN) && (check("true", idx) || check("false", idx))) this->obj_ = new ObjectBoolean();
-    else if (flag(Object::NUMBER) && number(raw[idx])) this->obj_ = new ObjectNumber();
-    else if (flag(Object::STRING) && raw[idx] == '\"') this->obj_ = new ObjectString();
-    else if (flag(Object::ARRAY) && raw[idx] == '[') this->obj_ = new ObjectArray();
-    else if (flag(Object::OBJECT) && raw[idx] == '{') this->obj_ = new ObjectDict();
+
+    ObjectManager::Until([&](const ObjectManager::Api& api) -> bool {
+        if (flag(api.mask) && api.checker(raw, idx)) {
+            Object* obj = api.constructor();
+            try {
+                obj->SetPosition(idx);
+                int len = obj->Parse(raw, idx, mask ? mask->Next() : NULL);
+                if (len <= 0) {
+                    throw JsonException(*this, raw, idx,
+                        std::string("Invalid JSON parse result with parser = ")
+                            + obj->GetName() + "."
+                    );
+                }
+                idx += len;
+                this->obj_ = obj;
+            }
+            catch (JsonException& e) {
+                delete obj;
+                throw e;
+            }
+            return true;
+        }
+        return false;
+    });
     if (this->obj_ == NULL) throw JsonException(*this, raw, idx, "Invalid JSON format.");
-    this->obj_->SetMask(mask ? mask->Next() : NULL);
-    this->obj_->SetPosition(idx);
-    idx += this->obj_->Parse(raw, idx);
-    int len = idx - start;
     if (all) {
         while (idx < n && raw[idx] == ' ') ++idx;
         if (idx < n) throw JsonException(*this, raw, idx, "Invalid JSON format.");
     }
-    return len;
+    return idx - start;
+}
+
+
+
+//quick APIs
+template <typename _T, typename... _ARGS>
+Json Create(_ARGS&&... args) {
+    return Json::Create<_T>(args...);
 }
 
 } // namespace json
