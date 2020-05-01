@@ -105,15 +105,14 @@ export class CppDebugger extends Debugger {
 
         const lines: string[] = code.split('\n');
         for (const line of lines) {
-            //vscode.window.showInformationMessage(`${line}`);
-            if (meta.name.length <= 0) {
-                const match: RegExpExecArray | null = classPattern.exec(line);
-                if (match) {
-                    meta.name = match[1];
-                    meta.isDesignProblem = meta.name != 'Solution';
-                }
+            const match: RegExpExecArray | null = classPattern.exec(line);
+            if (match) {
+                meta.name = match[1];
+                meta.functions = [];
+                meta.isDesignProblem = meta.name != 'Solution';
+                continue;
             }
-            else {
+            if (meta.name.length > 0) {
                 const func: IFunctionMetaInfo | undefined = getFuncMetaInfo(line);
                 if (func) {
                     meta.functions.push(func);
