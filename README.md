@@ -43,7 +43,7 @@
 
 - Interactive problem is **NOT** supported yet.
 
-- But you can realize the interactive function by yourself! Here is an example for problem [278](https://leetcode.com/problems/first-bad-version/).
+- But you can realize the interactive function by yourself! Know more from [API](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/docs/api.md) and [examples](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/docs/examples.md). Here is an example for [problem 278](https://leetcode.com/problems/first-bad-version/).
 
     ```cpp
     #ifdef LEETCODE_DEFINITION // protection
@@ -67,7 +67,7 @@
         value2 *= value1;
     }
     #define INTERACTION value1, before // input value1, then call the function 'before()'
-    #define LAZY_INTERACTION value2, after // input value2, the call the function 'after()'
+    #define LAZY_INTERACTION value2, after // input value2, then call the function 'after()'
     #endif
 
     class Solution {
@@ -92,8 +92,9 @@
 Setting Name|Description|Default Value
 :---|:---|:---
 `Source`|Source of code template for generating debugging code.|`"[online]leetcode.com"`
+`Delete Temporary Contents`|Delete temporary codes and files after debugging.|`true`
 `Id Match Pattern`|Regular expression for capturing problem ID when fetching problem online.|`"(\\d+).*"`
-`Output File Encoding`|Encoding of temporary code files|`utf8`
+`Output File Encoding`|Encoding of temporary code files|`"utf8"`
 
 - The default value of `Id Match Pattern` can match any file name begin with a number.
 

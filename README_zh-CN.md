@@ -43,7 +43,7 @@
 
 - 交互题目前**不**支持.
 
-- 但是你可以自己实现交互函数! 这里有一个题[278](https://leetcode-cn.com/problems/first-bad-version/)的例子.
+- 但是你可以自己实现交互函数! 可以通过[API](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/docs/api_zh-CN.md)和[示例](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/docs/examples_zh-CN.md)了解更多. 这里有一个[题278](https://leetcode-cn.com/problems/first-bad-version/)的例子.
 
     ```cpp
     #ifdef LEETCODE_DEFINITION // protection
@@ -67,7 +67,7 @@
         value2 *= value1;
     }
     #define INTERACTION value1, before // input value1, then call the function 'before()'
-    #define LAZY_INTERACTION value2, after // input value2, the call the function 'after()'
+    #define LAZY_INTERACTION value2, after // input value2, then call the function 'after()'
     #endif
 
     class Solution {
@@ -92,8 +92,9 @@
 设置项|描述|默认值
 :---|:---|:---
 `Source`|用于生成调试代码的代码模板来源.|`"[online]leetcode.com"`
+`Delete Temporary Contents`|在调试结束后，是否删除生成的临时文件与代码.|`true`
 `Id Match Pattern`|在线获取代码模板时, 用于捕获文件名中问题ID的正则表达式.|`"(\\d+).*"`
-`Output File Encoding`|生成的临时代码文件编码|`utf8`
+`Output File Encoding`|生成的临时代码文件编码|`"utf8"`
 
 - `Id Match Pattern`的默认值能匹配任何以数字开头的文件名.
 - 中文下遇到编码问题如中文头文件无法识别时, 可以尝试将`Ouput File Encoding`设置为`gbk`

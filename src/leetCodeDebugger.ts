@@ -75,7 +75,7 @@ class LeetCodeDebugger {
         async function afterDebugging(): Promise<void> {
             const editor = await switchEditor(solutionFilePath);
             await debuggerInstance.dispose(editor);
-            if (uc.getIsDeleteTemporaryContent()) {
+            if (uc.getIsDeleteTemporaryContents()) {
                 const stub: Promise<void>[] = [];
                 if (stubFileHelper) {
                     stub.push(stubFileHelper.uninstall(path.dirname(editor.document.uri.fsPath)));

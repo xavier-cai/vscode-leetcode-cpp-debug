@@ -88,8 +88,8 @@ export function getHost(): string | undefined {
     return hosts[source];
 }
 
-export function getIsDeleteTemporaryContent(): boolean {
-    return getConfiguration().get<boolean>("deleteTemporaryContentAfterDebugging", true);
+export function getIsDeleteTemporaryContents(): boolean {
+    return getConfiguration().get<boolean>("deleteTemporaryContents", true);
 }
 
 export function getEncoding(): string | undefined {
