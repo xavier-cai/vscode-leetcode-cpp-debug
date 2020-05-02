@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import * as fse from "fs-extra";
+import * as os from "os";
 
 export class StubCodeHelper {
     private raw: string;
@@ -25,7 +25,7 @@ export class StubCodeHelper {
 
         this.front = front;
         if (front != "") {
-            this.front += "\n";
+            this.front += os.EOL;
         }
     }
     public setBack(back: string): void {
@@ -34,7 +34,7 @@ export class StubCodeHelper {
         }
 
         if (back != "") {
-            this.back = "\n" + back;
+            this.back = os.EOL + back;
         }
         else {
             this.back = back;

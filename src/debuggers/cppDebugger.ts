@@ -63,15 +63,15 @@ export class CppDebugger extends Debugger {
             isInteractiveProblem: false
         }
 
-        const classPattern: RegExp = /class (Solution|[\w\d]+) {/;
-        const initPattern: RegExp = / *([\w\d]+) *\(((?:[, ]*[\w\d<>\*]+[ \*&]+[\w\d]+)*)\)[ \{\}]*/;
-        const funcPattern: RegExp = / *([\w\d<>\*]+) +([\w\d]+) *\(((?:[, ]*[\w\d<>\*]+[ \*&]+[\w\d]+)*)\)[ \{\}]*/;
-        const argPattern: RegExp = / *([\w\d<>\*]+(?: *\*)?) *&? *([\w\d]+) */;
+        const classPattern: RegExp = /class +(Solution|[\w\d]+) *{?/;
+        const initPattern: RegExp = / *([\w\d]+) *\(((?:[, ]*[\w\d<>, :\*]+[ \*&]+[\w\d]+)*)\)[ \{\}]*/;
+        const funcPattern: RegExp = / *([\w\d<>, :\*]+) +([\w\d]+) *\(((?:[, ]*[\w\d<>, :\*]+[ \*&]+[\w\d]+)*)\)[ \{\}]*/;
+        const argPattern: RegExp = / *([\w\d<>, :\*]+[&\* ]+)([\w\d]+) */;
 
         function getArgMetaInfo(arg: string): IArgumentMetaInfo {
             const match: RegExpExecArray | null = argPattern.exec(arg);
             if (match) {
-                return { type: match[1], name: match[2] };
+                return { type: match[1].replace("&", "").trim(), name: match[2].trim() };
             }
             (function (): never {
                 throw new Error(`Can not get meta info from ${arg}.`);
@@ -85,22 +85,43 @@ export class CppDebugger extends Debugger {
                     type: type
                 };
                 if (args.replace(" ", "").length > 0) {
-                    ret.args = args.split(',').map((value) => getArgMetaInfo(value));
+                    let parts: string[] = [];
+                    let cnt: number = 0;
+                    let index: number = 0;
+                    let start: number = 0;
+                    while (true) {
+                        if (index >= args.length || (args[index] == ',' && cnt == 0)) {
+                            parts.push(args.substr(start, index - start));
+                            start = index + 1;
+                            if (index >= args.length) {
+                                break;
+                            }
+                        }
+                        if (args[index] == '<') cnt += 1;
+                        if (args[index] == '>') cnt -= 1;
+                        index += 1;
+                    }
+                    ret.args = parts.map((value) => getArgMetaInfo(value));
                 }
                 return ret;
+            }
+
+            const eol = line.lastIndexOf(";");
+            if (eol >= 0 && eol > line.lastIndexOf("}")) {
+                return;
             }
 
             if (meta.name.length > 0) {
                 const match: RegExpExecArray | null = initPattern.exec(line);
                 if (match && match[1] == meta.name) {
-                    return normalize('void', match[1], match[2]);
+                    return normalize('void', match[1].trim(), match[2]);
                 }
             }
             const match: RegExpExecArray | null = funcPattern.exec(line);
             if (!match) {
                 return;
             }
-            return normalize(match[1], match[2], match[3]);
+            return normalize(match[1].trim(), match[2].trim(), match[3]);
         }
 
         const lines: string[] = code.split('\n');
