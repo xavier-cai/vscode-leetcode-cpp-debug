@@ -1,4 +1,5 @@
 import * as vscode from 'vscode'
+import * as path from 'path'
 
 export const configs = {
     resourcesPath: "resources",
@@ -73,7 +74,7 @@ export function getProblemId(file: string): string | undefined {
         return;
     }
     const reg: RegExp = new RegExp(pattern);
-    const match: RegExpExecArray | null = reg.exec(file);
+    const match: RegExpExecArray | null = reg.exec(path.basename(file));
     if (!match || match.length <= 1) {
         return;
     }
