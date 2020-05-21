@@ -1,0 +1,4 @@
+*.h linguist-language=typescript
+*.c linguist-language=typescript
+*.hpp linguist-language=typescript
+*.cpp linguist-language=typescript
