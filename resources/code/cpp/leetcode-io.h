@@ -8,6 +8,7 @@
 #include <list>
 #include <sstream>
 #include <functional>
+#include <direct.h>
 
 #include "leetcode-convert.h"
 #include "leetcode-types.h"
@@ -93,7 +94,15 @@ struct Convert<TreeNode*> {
 
 namespace io {
 
-struct EofException : public std::exception {};
+std::string GetCurrentDirectory() {
+    char* buffer = getcwd(NULL, 0);
+    if (buffer == NULL) return "";
+    std::string cwd(buffer);
+    free(buffer);
+    if (cwd.length() <= 0 || cwd.back() == '/' || cwd.back() == '\\') return cwd;
+    if (cwd.find('\\') != std::string::npos) return cwd + '\\';
+    return cwd + '/';
+}
 
 class SI {
 public:
@@ -149,7 +158,7 @@ SI::SI(const std::string& file) :
     auto ifs = new std::ifstream(file);
     if (!ifs->is_open()) {
         delete ifs;
-        throw std::string("Can not open the input file.");
+        throw std::string("Can not open the input file: ")  + GetCurrentDirectory() + file;
     }
     this->is_ = ifs;
 }
@@ -181,10 +190,8 @@ const std::string& SI::GetRaw() const {
 }
 
 json::Json SI::GetLine() {
-    if (this->Eof()) throw EofException();
     this->line_ += 1;
     std::getline(*this->is_, this->raw_);
-    if (this->Eof()) throw EofException();
     return json::Json(this->raw_);
 }
 
@@ -244,7 +251,7 @@ void MO::InitOS(const std::string& fname) {
     auto ofs = new std::ofstream(fname);
     if (!ofs->is_open()) {
         delete ofs;
-        throw std::string("Can not open the output file.");
+        throw std::string("Can not open the output file: ") + GetCurrentDirectory() + fname;
     }
     this->ofs_.push_back(ofs);
     this->oss_.push_back(ofs);

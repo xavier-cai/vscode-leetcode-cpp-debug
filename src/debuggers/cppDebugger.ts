@@ -118,7 +118,7 @@ export class CppDebugger extends Debugger {
                 }
             }
             const match: RegExpExecArray | null = funcPattern.exec(line);
-            if (!match) {
+            if (!match || match[1].trim().length <= 0) {
                 return;
             }
             return normalize(match[1].trim(), match[2].trim(), match[3]);

@@ -34,11 +34,12 @@ int main() {
     }
     catch (std::string& e) {
         std::cerr << "\nError: " << e << std::endl;
-        // pause here in terminal
-        std::cout << "Press Any Key to Continue..." << std::endl;
-        std::cin.sync(); // clear
-        std::cin.get(); // pause
     }
+    // pause here in terminal
+    std::cout << "Press Any Key to Continue..." << std::endl;
+    std::cin.clear();
+    std::cin.sync();
+    std::cin.get(); // pause
     return 0;
 }
 

@@ -64,17 +64,31 @@ private:
 
 void Entry::Run(io::SI& in, io::MO& out) {
     while (!in.Eof()) {
+        int startLine = 0;
         try {
+            startLine = in.GetLineCount() + 1;
 #ifdef INTERACTION
-        in.Input(INTERACTION);
+            in.Input(INTERACTION);
 #endif
 #ifdef SYSTEM_DESIGN 
-        RunSystemDesign(in, out);
+            RunSystemDesign(in, out);
 #else
-        RunAlgorithm(in, out);
+            RunAlgorithm(in, out);
 #endif
         }
-        catch (io::EofException) {}
+        catch (...) {
+            if (in.Eof() && startLine == in.GetLineCount()) {
+                bool blank = true;
+                for (auto& c : in.GetRaw()) {
+                    if (c != ' ') {
+                        blank = false;
+                        break;
+                    }
+                }
+                if (blank) break;
+            }
+            throw;
+        }
 
         try {
             mem::MemoryCleaner::Clean();
