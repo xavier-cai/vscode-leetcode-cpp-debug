@@ -2,11 +2,11 @@
 	"name": "vscode-leetcode-cpp-debug",
 	"displayName": "LeetCode Debugger for C++",
 	"description": "Debug support for LeetCode with C++",
-	"version": "0.0.5",
+	"version": "0.0.6",
 	"author": "Xavier Cai",
-    "publisher": "XavierCai",
+	"publisher": "XavierCai",
 	"license": "MIT",
-    "icon": "resources/imgs/icon.png",
+	"icon": "resources/imgs/icon.png",
 	"engines": {
 		"vscode": "^1.43.0"
 	},
@@ -14,8 +14,8 @@
 		"type": "git",
 		"url": "https://github.com/XavierCai1996/vscode-leetcode-cpp-debug"
 	},
-    "homepage": "https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/README.md",
-    "preview": true,
+	"homepage": "https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/README.md",
+	"preview": true,
 	"categories": [
 		"Other"
 	],
@@ -51,11 +51,11 @@
 						"default": "[online]leetcode.com"
 					},
 					"leetcode-cpp-debugger.deleteTemporaryContents": {
-                        "type": "boolean",
-                        "default": true,
-                        "scope": "application",
-                        "description": "Delete temporary codes and files after debugging."
-                    },
+						"type": "boolean",
+						"default": true,
+						"scope": "application",
+						"description": "Delete temporary codes and files after debugging."
+					},
 					"leetcode-cpp-debugger.idMatchPattern": {
 						"type": "string",
 						"scope": "application",
