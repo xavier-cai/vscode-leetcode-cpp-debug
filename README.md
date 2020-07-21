@@ -2,11 +2,11 @@
 
 > Debug support for [LeetCode](https://leetcode.com/) with C++ in [VSCode](https://code.visualstudio.com/)
 
-- **English Document** | [中文文档](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/README_zh-CN.md)
+- **English Document** | [中文文档](https://github.com/xavier-cai/vscode-leetcode-cpp-debug/blob/master/README_zh-CN.md)
 
 ## Quick Start
 
-![demo](https://raw.githubusercontent.com/XavierCai1996/vscode-leetcode-cpp-debug/master/docs/imgs/demo.gif)
+![demo](https://raw.githubusercontent.com/xavier-cai/vscode-leetcode-cpp-debug/master/docs/imgs/demo.gif)
 
 > **Attention**: Before start debugging, you must check availability of your C++ debugger tools. Get more information from [VSCode documents](https://code.visualstudio.com/docs/cpp/config-mingw#cpp-atricles).
 
@@ -43,7 +43,7 @@
 
 - Interactive problem is **NOT** supported yet.
 
-- But you can realize the interactive function by yourself! Know more from [API](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/docs/api.md) and [examples](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/docs/examples.md). Here is an example for [problem 278](https://leetcode.com/problems/first-bad-version/).
+- But you can realize the interactive function by yourself! Know more from [API](https://github.com/xavier-cai/vscode-leetcode-cpp-debug/blob/master/docs/api.md) and [examples](https://github.com/xavier-cai/vscode-leetcode-cpp-debug/blob/master/docs/examples.md). Here is an example for [problem 278](https://leetcode.com/problems/first-bad-version/).
 
     ```cpp
     #ifdef LEETCODE_DEFINITION // protection
@@ -100,7 +100,7 @@ Setting Name|Description|Default Value
 
 ## Release Notes
 
-Refer to [CHANGELOG](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/CHANGELOG.md).
+Refer to [CHANGELOG](https://github.com/xavier-cai/vscode-leetcode-cpp-debug/blob/master/CHANGELOG.md).
 
 ## Tips
 
