@@ -2,11 +2,11 @@
 
 > 为你的[LeetCode](https://leetcode.com/) C++ 代码在[VSCode](https://code.visualstudio.com/)中提供调试支持.
 
-- [English Document](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/README.md) | **中文文档**
+- [English Document](https://github.com/xavier-cai/vscode-leetcode-cpp-debug/blob/master/README.md) | **中文文档**
 
 ## 快速开始
 
-![demo](https://raw.githubusercontent.com/XavierCai1996/vscode-leetcode-cpp-debug/master/docs/imgs/demo.gif)
+![demo](https://raw.githubusercontent.com/xavier-cai/vscode-leetcode-cpp-debug/master/docs/imgs/demo.gif)
 
 > **注意**: 在使用此插件启动调试前, 你必须确定你有可用的C++调试工具. 从[官方文档](https://code.visualstudio.com/docs/cpp/config-mingw#cpp-atricles)可以获取更多相关信息.
 
@@ -43,7 +43,7 @@
 
 - 交互题目前**不**支持.
 
-- 但是你可以自己实现交互函数! 可以通过[API](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/docs/api_zh-CN.md)和[示例](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/docs/examples_zh-CN.md)了解更多. 这里有一个[题278](https://leetcode-cn.com/problems/first-bad-version/)的例子.
+- 但是你可以自己实现交互函数! 可以通过[API](https://github.com/xavier-cai/vscode-leetcode-cpp-debug/blob/master/docs/api_zh-CN.md)和[示例](https://github.com/xavier-cai/vscode-leetcode-cpp-debug/blob/master/docs/examples_zh-CN.md)了解更多. 这里有一个[题278](https://leetcode-cn.com/problems/first-bad-version/)的例子.
 
     ```cpp
     #ifdef LEETCODE_DEFINITION // protection
@@ -101,7 +101,7 @@
 
 ## 版本日志
 
-详细内容请查看[CHANGELOG](https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/CHANGELOG.md).
+详细内容请查看[CHANGELOG](https://github.com/xavier-cai/vscode-leetcode-cpp-debug/blob/master/CHANGELOG.md).
 
 ## 小贴士
 
