@@ -8,7 +8,11 @@
 #include <list>
 #include <sstream>
 #include <functional>
+#ifdef _WIN32
 #include <direct.h>
+#else
+#include <unistd.h>
+#endif
 
 #include "leetcode-convert.h"
 #include "leetcode-types.h"
