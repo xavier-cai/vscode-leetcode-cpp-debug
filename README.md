@@ -8,13 +8,13 @@
 
 ![demo](https://raw.githubusercontent.com/xavier-cai/vscode-leetcode-cpp-debug/master/docs/imgs/demo.gif)
 
-> **Attention**: Before start debugging, you must check availability of your C++ debugger tools. Get more information from [VSCode documents](https://code.visualstudio.com/docs/cpp/config-mingw#cpp-atricles).
+> **Attention**: Before start debugging, you must to check availability of your C++ debugger tools. Get more information from [VSCode documents](https://code.visualstudio.com/docs/cpp/config-mingw#cpp-atricles).
 
 ## Features
 
 ### Start Debugging
 
-- Generate debugging code and start a debug session for your solution.
+- Generate debugging codes and start a debug session for your solution.
 
 - You can run the `LeetCode Debugger: Start Debugging` command from the command palette (`Ctrl/Cmd + Shift + P`).
 
@@ -22,13 +22,13 @@
 
 - Code template is used to generate the debugging code.
 
-- Online: Fetching problem from `LeetCode`. Requires your solution file start with problem ID, like `1.two-sum.cpp` (Or you can modify the regular expression for capturing problem ID in extension settings).
+- Online: Fetching problem from `LeetCode`. Requires your solution file to start with problem ID, for example, `1.two-sum.cpp` (Or you can modify the regular expression for capturing problem ID in extension settings).
 
 - Offline: Using your solution code as code template.
 
 ### Input/Output
 
-- You can use the code below to change input/output:
+- You could use the code below to change the input/output:
 
     ```cpp
     #define INPUT "test_case.txt" // single-input
@@ -59,6 +59,7 @@
 
     ```cpp
     #ifdef LEETCODE_DEFINITION // protection
+
     int value1, value2; // interactive values
     void before() {
         value1 *= 2;
@@ -66,8 +67,10 @@
     void after() {
         value2 *= value1;
     }
+
     #define INTERACTION value1, before // input value1, then call the function 'before()'
     #define LAZY_INTERACTION value2, after // input value2, then call the function 'after()'
+
     #endif
 
     class Solution {

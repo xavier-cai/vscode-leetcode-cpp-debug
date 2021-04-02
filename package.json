@@ -12,9 +12,9 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/XavierCai1996/vscode-leetcode-cpp-debug"
+		"url": "https://github.com/xavier-cai/vscode-leetcode-cpp-debug"
 	},
-	"homepage": "https://github.com/XavierCai1996/vscode-leetcode-cpp-debug/blob/master/README.md",
+	"homepage": "https://github.com/xavier-cai/vscode-leetcode-cpp-debug/blob/master/README.md",
 	"preview": true,
 	"categories": [
 		"Other"

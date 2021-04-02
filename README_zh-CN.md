@@ -59,6 +59,7 @@
 
     ```cpp
     #ifdef LEETCODE_DEFINITION // protection
+
     int value1, value2; // interactive values
     void before() {
         value1 *= 2;
@@ -66,8 +67,10 @@
     void after() {
         value2 *= value1;
     }
+
     #define INTERACTION value1, before // input value1, then call the function 'before()'
     #define LAZY_INTERACTION value2, after // input value2, then call the function 'after()'
+    
     #endif
 
     class Solution {
