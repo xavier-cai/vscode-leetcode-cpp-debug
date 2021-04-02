@@ -2,7 +2,7 @@
 	"name": "vscode-leetcode-cpp-debug",
 	"displayName": "LeetCode Debugger for C++",
 	"description": "Debug support for LeetCode with C++",
-	"version": "0.0.6",
+	"version": "0.0.7",
 	"author": "Xavier Cai",
 	"publisher": "XavierCai",
 	"license": "MIT",
