@@ -504,12 +504,12 @@ void JBoolean::Print(std::ostream& os) const {
 class JNumber : public clone::Template<JNumber, Object> {
 public:
     JNumber();
-    JNumber(int v);
+    JNumber(long long v);
     JNumber(double v);
-    int GetInteger() const;
+    long long GetInteger() const;
     double GetNumber() const;
     bool IsInteger() const;
-    void SetValue(int v);
+    void SetValue(long long v);
     void SetValue(double v);
 
     static bool IsNumberCharacter(char c);
@@ -520,7 +520,7 @@ protected:
     virtual void Print(std::ostream& os) const override;
 
 private:
-    int integer_;
+    long long integer_;
     double number_;
     bool isInteger_;
 }; // class JNumber
@@ -541,7 +541,7 @@ JNumber::JNumber() :
     isInteger_(true)
 {}
 
-JNumber::JNumber(int v) {
+JNumber::JNumber(long long v) {
     this->SetValue(v);
 }
 
@@ -549,7 +549,7 @@ JNumber::JNumber(double v) {
     this->SetValue(v);
 }
 
-int JNumber::GetInteger() const {
+long long JNumber::GetInteger() const {
     return this->integer_;
 }
 
@@ -561,7 +561,7 @@ bool JNumber::IsInteger() const {
     return this->isInteger_;
 }
 
-void JNumber::SetValue(int v) {
+void JNumber::SetValue(long long v) {
     this->number_ = this->integer_ = v;
     this->isInteger_ = true;
 }

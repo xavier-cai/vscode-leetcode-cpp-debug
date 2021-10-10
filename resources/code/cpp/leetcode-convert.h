@@ -145,7 +145,6 @@ struct Convert<bool> {
 };
 
 
-
 template <>
 struct Convert<int> {
     static void FromJson(int& v, const json::Json& js) {
@@ -154,10 +153,22 @@ struct Convert<int> {
         v = obj->GetInteger();
     }
     static json::Json ToJson(const int& v) {
-        return json::JNumber(v);
+        return json::JNumber((long long)v);
     }
 };
 
+
+template <>
+struct Convert<long long> {
+    static void FromJson(long long& v, const json::Json& js) {
+        auto obj = js.GetObject<json::JNumber>();
+        if (obj == NULL || !obj->IsInteger()) QUICK_THROW(js, long long);
+        v = obj->GetInteger();
+    }
+    static json::Json ToJson(const long long& v) {
+        return json::JNumber(v);
+    }
+};
 
 
 template <>
@@ -198,6 +209,19 @@ struct Convert<std::string> {
     }
 };
 
+
+template <>
+struct Convert<char> {
+    static void FromJson(char& v, const json::Json& js) {
+        auto& str = js.GetObject<json::JString>()->GetString();
+        if (str.size() != 1) QUICK_THROW(js, char);
+        v = str.front();
+    }
+
+    static json::Json ToJson(const char& v) {
+        return json::Json::Create<json::JString>(std::string(1, v));
+    }
+};
 
 
 template <typename _VAL>
