@@ -207,13 +207,13 @@ export class CppDebugger extends Debugger {
         if (!meta.isDesignProblem) {
             const candidates: Array<IQuickItemEx<IFunctionMetaInfo>> = [];
             meta.functions.forEach(f => {
-                if ( f.type != "void" && f.args.length > 0) {
+                //if ( f.type != "void" && f.args.length > 0) {
                     const args: string[] = f.args.map((a) => a.type);
                     candidates.push({
                         label: `> ${f.name}(${args.join(", ")}) => ${f.type}`,
                         value: f
                     });
-                }
+                //}
             });
             if (candidates.length < 1) {
                 throw new Error(`Can not find entry function in class [${meta.name}].`);
@@ -239,9 +239,17 @@ export class CppDebugger extends Debugger {
             }
             code.line(`#ifdef LAZY_INTERACTION`)
                 .line(`in.Input(LAZY_INTERACTION);`)
-                .line(`#endif`)
-                .line(`out << solution_->${func.name}(${genArgsCode(func)}) << std::endl;`)
-                .left().line('}');
+                .line(`#endif`);
+            if (func.type != "void") {
+                code.line(`out << solution_->${func.name}(${genArgsCode(func)}) << std::endl;`);
+            }
+            else {
+                code.line(`solution_->${func.name}(${genArgsCode(func)});`);
+                for (const arg of func.args) {
+                    code.line(`out << ${arg.name} << std::endl;`);
+                }
+            }
+            code.left().line('}');
         }
         else {
             code.line(`void Handle(io::SI& in, io::MO& out) {}`);
